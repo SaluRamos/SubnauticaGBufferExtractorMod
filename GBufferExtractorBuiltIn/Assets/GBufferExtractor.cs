@@ -7,8 +7,7 @@ using System.Collections.Generic;
 using UnityEngine.InputSystem;
 #endif
 
-public class GBufferExtractor : MonoBehaviour
-{
+public class GBufferExtractor : MonoBehaviour {
 
     public static string assetBundleFolderPath = "E:/UnityGBufferExtractorMod/BepInExBuiltIn/Shaders";
     private static string assetBundlePath = $"{assetBundleFolderPath}/bundle";
@@ -64,20 +63,20 @@ public class GBufferExtractor : MonoBehaviour
         if (isCapturing)
         {
             timer += Time.deltaTime;
-            if (timer >= captureInterval)
-            {
+            if (timer >= captureInterval) {
                 timer = 0f;
+                string timestamp = $"{System.DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}";
                 LoadShaders();
-                SaveCameraImage(mainCam);
-                SaveCameraImage(worldNormalCamera);
-                SaveCameraImage(localNormalCamera);
-                SaveCameraImage(depthCamera);
-                SaveCameraImage(albedoCamera);
-                SaveSegmentationCameraByLayer();
-                SaveSegmentationCameraByTag();
-                SaveCameraImage(specularCamera);
-                SaveCameraImage(glossinessCamera);
-                SaveCameraImage(emissionCamera);
+                SaveCameraImage(mainCam, timestamp);
+                SaveCameraImage(worldNormalCamera, timestamp);
+                SaveCameraImage(localNormalCamera, timestamp);
+                SaveCameraImage(depthCamera, timestamp);
+                SaveCameraImage(albedoCamera, timestamp);
+                SaveSegmentationCameraByLayer(timestamp);
+                SaveSegmentationCameraByTag(timestamp);
+                SaveCameraImage(specularCamera, timestamp);
+                SaveCameraImage(glossinessCamera, timestamp);
+                SaveCameraImage(emissionCamera, timestamp);
             }
         }
     }
@@ -312,50 +311,17 @@ public class GBufferExtractor : MonoBehaviour
         return loadedShader;
     }
 
-    private void SaveCameraImage(Camera cam) {
+    private void SaveCameraImage(Camera cam, string timestamp) {
         if (cam == null) {
             return;
         }
-
-        string fileName = $"capture_{cam.gameObject.name}_{System.DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}.jpg";
-        string fullPath = Path.Combine(captureFolder, fileName);
-
-        int newWidth = cam.pixelWidth / 2;
-        int newHeight = cam.pixelHeight / 2;
-
         RenderTexture rtFull = RenderTexture.GetTemporary(cam.pixelWidth, cam.pixelHeight, 24);
-        RenderTexture rtHalf = RenderTexture.GetTemporary(newWidth, newHeight, 0);
-
-        RenderTexture prevActiveRT = RenderTexture.active;
-        RenderTexture prevCameraRT = cam.targetTexture;
-
         cam.targetTexture = rtFull;
         cam.Render();
-
-        Graphics.Blit(rtFull, rtHalf);
-
-        Texture2D screenShot = new Texture2D(newWidth, newHeight, TextureFormat.RGB24, false);
-        RenderTexture.active = rtHalf;
-        screenShot.ReadPixels(new Rect(0, 0, newWidth, newHeight), 0, 0);
-        screenShot.Apply();
-
-        byte[] bytes = screenShot.EncodeToJPG(95);
-        try {
-            File.WriteAllBytes(fullPath, bytes);
-        } catch (IOException ex) {
-            Debug.LogError($"Erro ao salvar o arquivo: {ex.Message}");
-        }
-
-        // Limpeza de recursos para evitar vazamento de memoria
-        cam.targetTexture = prevCameraRT; 
-        RenderTexture.active = prevActiveRT; 
-        RenderTexture.ReleaseTemporary(rtFull);
-        RenderTexture.ReleaseTemporary(rtHalf);
-        Destroy(screenShot);
-
+        SaveJPG($"capture_{cam.gameObject.name}_{timestamp}.jpg", cam, rtFull);
     }
 
-    private void SaveSegmentationCameraByLayer() {
+    private void SaveSegmentationCameraByLayer(string timestamp) {
         if (segmentationCamera == null || segmentationShader == null) {
             return;
         }
@@ -385,46 +351,16 @@ public class GBufferExtractor : MonoBehaviour
             }
         }
 
-        int newWidth = segmentationCamera.pixelWidth / 2;
-        int newHeight = segmentationCamera.pixelHeight / 2;
-
         RenderTexture rtFull = RenderTexture.GetTemporary(segmentationCamera.pixelWidth, segmentationCamera.pixelHeight, 24);
-        RenderTexture rtHalf = RenderTexture.GetTemporary(newWidth, newHeight, 0);
-
-        RenderTexture prevActiveRT = RenderTexture.active;
-        RenderTexture prevCameraRT = segmentationCamera.targetTexture;
-
         segmentationCamera.targetTexture = rtFull;
         segmentationCamera.clearFlags = CameraClearFlags.SolidColor;
         segmentationCamera.backgroundColor = new Color(0.2862f, 0.4941f, 0.6745f, 1f);
         segmentationCamera.cullingMask = ~0;
         segmentationCamera.Render();
-
-        Graphics.Blit(rtFull, rtHalf);
-
-        string fileName = $"capture_seg_by_layer_{System.DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}.jpg";
-        string fullPath = Path.Combine(captureFolder, fileName);
-        Texture2D screenShot = new Texture2D(newWidth, newHeight, TextureFormat.RGB24, false);
-        RenderTexture.active = rtHalf;
-        screenShot.ReadPixels(new Rect(0, 0, newWidth, newHeight), 0, 0);
-        screenShot.Apply();
-        byte[] bytes = screenShot.EncodeToJPG(95);
-
-        try {
-            File.WriteAllBytes(fullPath, bytes);
-        } catch (IOException ex) {
-            Debug.LogError($"Erro ao salvar o arquivo: {ex.Message}");
-        }
-        Destroy(screenShot);
-
-        // Limpeza
-        segmentationCamera.targetTexture = prevCameraRT;
-        RenderTexture.active = prevActiveRT;
-        RenderTexture.ReleaseTemporary(rtFull);
-        RenderTexture.ReleaseTemporary(rtHalf);
+        SaveJPG($"capture_seg_by_layer_{timestamp}.jpg", segmentationCamera, rtFull);
     }
 
-    private void SaveSegmentationCameraByTag() {
+    private void SaveSegmentationCameraByTag(string timestamp) {
         if (segmentationCamera == null || segmentationShader == null) {
             return;
         }
@@ -453,39 +389,34 @@ public class GBufferExtractor : MonoBehaviour
             }
         }
 
-        int newWidth = segmentationCamera.pixelWidth / 2;
-        int newHeight = segmentationCamera.pixelHeight / 2;
-
         RenderTexture rtFull = RenderTexture.GetTemporary(segmentationCamera.pixelWidth, segmentationCamera.pixelHeight, 24);
-        RenderTexture rtHalf = RenderTexture.GetTemporary(newWidth, newHeight, 0);
-
-        RenderTexture prevActiveRT = RenderTexture.active;
-        RenderTexture prevCameraRT = segmentationCamera.targetTexture;
-
         segmentationCamera.targetTexture = rtFull;
         segmentationCamera.clearFlags = CameraClearFlags.SolidColor;
         segmentationCamera.cullingMask = ~0;
         segmentationCamera.Render();
+        SaveJPG($"capture_seg_by_tag_{timestamp}.jpg", segmentationCamera, rtFull);
+    }
 
-        Graphics.Blit(rtFull, rtHalf);
-
-        string fileName = $"capture_seg_by_tag_{System.DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}.jpg";
+    private void SaveJPG(string fileName, Camera cam, RenderTexture rtFull) {
         string fullPath = Path.Combine(captureFolder, fileName);
+        int newWidth = cam.pixelWidth / 2;
+        int newHeight = cam.pixelHeight / 2;
+        RenderTexture rtHalf = RenderTexture.GetTemporary(newWidth, newHeight, 0);
+        RenderTexture prevActiveRT = RenderTexture.active;
+        Graphics.Blit(rtFull, rtHalf);
         Texture2D screenShot = new Texture2D(newWidth, newHeight, TextureFormat.RGB24, false);
         RenderTexture.active = rtHalf;
         screenShot.ReadPixels(new Rect(0, 0, newWidth, newHeight), 0, 0);
         screenShot.Apply();
         byte[] bytes = screenShot.EncodeToJPG(95);
-
         try {
             File.WriteAllBytes(fullPath, bytes);
         } catch (IOException ex) {
             Debug.LogError($"Erro ao salvar o arquivo: {ex.Message}");
         }
-        Destroy(screenShot);
-
         // Limpeza
-        segmentationCamera.targetTexture = prevCameraRT;
+        Destroy(screenShot);
+        cam.targetTexture = null;
         RenderTexture.active = prevActiveRT;
         RenderTexture.ReleaseTemporary(rtFull);
         RenderTexture.ReleaseTemporary(rtHalf);
