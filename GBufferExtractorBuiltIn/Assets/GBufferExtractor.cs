@@ -12,7 +12,7 @@ public class GBufferExtractor : MonoBehaviour
 
     public static string assetBundleFolderPath = "E:/UnityGBufferExtractorMod/BepInEx/Shaders";
     private static string assetBundlePath = $"{assetBundleFolderPath}/bundle";
-    private string captureFolder = "E:/EPE/data/game_gbuffers/bepinex"; //local onde as imagens ser�o salvas
+    private string captureFolder = "E:/EPE/data/game_gbuffers/bepinex"; //local onde as imagens serão salvas
 
     private bool isCapturing = false;
     private float timer = 0f;
@@ -37,8 +37,7 @@ public class GBufferExtractor : MonoBehaviour
     private Shader segmentationShader;
     private Camera segmentationCamera;
 
-    void Start()
-    {
+    void Start() {
         LoadShaders();
     }
 
@@ -60,17 +59,17 @@ public class GBufferExtractor : MonoBehaviour
                 timer = 0f;
                 LoadShaders();
                 SaveCameraImage(mainCam);
-                SaveCameraImage(worldNormalCamera);
-                SaveCameraImage(localNormalCamera);
-                SaveCameraImage(depthCamera);
-                SaveCameraImage(albedoCamera);
-                // SaveSegmentationCameraImage();
+                // SaveCameraImage(worldNormalCamera);
+                // SaveCameraImage(localNormalCamera);
+                // SaveCameraImage(depthCamera);
+                // SaveCameraImage(albedoCamera);
+                SaveSegmentationCameraByLayer();
+                SaveSegmentationCameraByTag();
             }
         }
     }
 
-    private void LoadShaders()
-    {
+    private void LoadShaders() {
         if (!loadedShaders) {
             Directory.CreateDirectory(captureFolder);
             mainCam = Camera.main;
@@ -104,7 +103,6 @@ public class GBufferExtractor : MonoBehaviour
             {
                 Debug.Log("'World' não encontrado no bundle!");
             }
-
             worldNormalCamera.SetReplacementShader(worldNormalShader, "");
         }
     }
@@ -128,7 +126,7 @@ public class GBufferExtractor : MonoBehaviour
             localNormalShader = LoadExternalShader(assetBundlePath, "LocalNormalShader");
             if (!localNormalShader)
             {
-                Debug.Log("'LocalNormalShader' n�o encontrado no bundle!");
+                Debug.Log("'LocalNormalShader' não encontrado no bundle!");
             }
             localNormalCamera.SetReplacementShader(localNormalShader, "");
         }
@@ -152,7 +150,7 @@ public class GBufferExtractor : MonoBehaviour
             depthShader = LoadExternalShader(assetBundlePath, "DepthShader");
             if (!depthShader)
             {
-                Debug.Log("'DepthShader' n�o encontrado no bundle!");
+                Debug.Log("'DepthShader' não encontrado no bundle!");
             }
             depthCamera.SetReplacementShader(depthShader, "");
         }
@@ -176,7 +174,7 @@ public class GBufferExtractor : MonoBehaviour
             albedoShader = LoadExternalShader(assetBundlePath, "AlbedoShader");
             if (!albedoShader)
             {
-                Debug.Log("'albedoShader' n�o encontrado no bundle!");
+                Debug.Log("'albedoShader' não encontrado no bundle!");
             }
             albedoCamera.SetReplacementShader(albedoShader, "");
         }
@@ -198,7 +196,7 @@ public class GBufferExtractor : MonoBehaviour
             segmentationShader = LoadExternalShader(assetBundlePath, "SegmentationShader");
             if (!segmentationShader)
             {
-                Debug.Log("'segmentationShader' n�o encontrado no bundle!");
+                Debug.Log("'segmentationShader' não encontrado no bundle!");
             }
             segmentationCamera.SetReplacementShader(segmentationShader, "");
         }
@@ -214,17 +212,12 @@ public class GBufferExtractor : MonoBehaviour
 
         Shader loadedShader = bundle.LoadAsset<Shader>(shaderName);
 
-        if (loadedShader != null)
-        {
-            Debug.Log("Shader carregado com sucesso!");
-            if (!loadedShader.isSupported)
-            {
-                Debug.LogWarning(shaderName + " carregado, mas n�o suportado pela plataforma atual!");
+        if (loadedShader != null) {
+            if (!loadedShader.isSupported) {
+                Debug.LogWarning(shaderName + " carregado, mas não suportado pela plataforma atual!");
             }
-        }
-        else
-        {
-            Debug.LogError(shaderName + " n�o encontrado no AssetBundle!");
+        } else {
+            Debug.LogError(shaderName + " não encontrado no AssetBundle!");
         }
 
         bundle.Unload(false);
@@ -256,17 +249,16 @@ public class GBufferExtractor : MonoBehaviour
         Texture2D screenShot = new Texture2D(newWidth, newHeight, TextureFormat.RGB24, false);
         RenderTexture.active = rtHalf;
         screenShot.ReadPixels(new Rect(0, 0, newWidth, newHeight), 0, 0);
-        screenShot.Apply(); // Aplica as mudan�as de ReadPixels
+        screenShot.Apply();
 
         byte[] bytes = screenShot.EncodeToJPG(95);
         try {
             File.WriteAllBytes(fullPath, bytes);
-            Debug.Log($"Imagem salva com sucesso em: {fullPath}");
         } catch (IOException ex) {
             Debug.LogError($"Erro ao salvar o arquivo: {ex.Message}");
         }
 
-        // 8. Limpeza de recursos para evitar vazamento de mem�ria
+        // Limpeza de recursos para evitar vazamento de memoria
         cam.targetTexture = prevCameraRT; 
         RenderTexture.active = prevActiveRT; 
         RenderTexture.ReleaseTemporary(rtFull);
@@ -275,20 +267,35 @@ public class GBufferExtractor : MonoBehaviour
 
     }
 
-    private void SaveSegmentationCameraImage() {
+    private static readonly int SegmentationIDProp = Shader.PropertyToID("_SegmentationID");
+
+    private void SaveSegmentationCameraByLayer() {
         if (segmentationCamera == null || segmentationShader == null) {
             return;
         }
 
         var layerMappings = new Dictionary<string, int>();
-        int segmentationId = 1; // ID 0 � reservado para o fundo
+        int segmentationIdCounter = 1; // ID 0 é o fundo
         for (int i = 0; i < 32; i++)
         {
             string layerName = LayerMask.LayerToName(i);
             if (!string.IsNullOrEmpty(layerName))
             {
-                layerMappings.Add(layerName, segmentationId);
-                segmentationId++;
+                layerMappings.Add(layerName, segmentationIdCounter);
+                segmentationIdCounter++;
+            }
+        }
+
+        var allRenderers = FindObjectsOfType<Renderer>();
+        var propBlock = new MaterialPropertyBlock();
+        foreach (var renderer in allRenderers) {
+            if (!renderer.isVisible) continue;
+            string layerName = LayerMask.LayerToName(renderer.gameObject.layer);
+            if (layerMappings.TryGetValue(layerName, out int segmentationId))
+            {
+                renderer.GetPropertyBlock(propBlock); // Pega o bloco atual (boa prática)
+                propBlock.SetFloat(SegmentationIDProp, (float)segmentationId); // Define nosso ID
+                renderer.SetPropertyBlock(propBlock); // Aplica o bloco de volta
             }
         }
 
@@ -302,38 +309,96 @@ public class GBufferExtractor : MonoBehaviour
         RenderTexture prevCameraRT = segmentationCamera.targetTexture;
 
         segmentationCamera.targetTexture = rtFull;
-        segmentationCamera.cullingMask = 0;
         segmentationCamera.clearFlags = CameraClearFlags.SolidColor;
         segmentationCamera.backgroundColor = new Color(0.2862f, 0.4941f, 0.6745f, 1f);
-        segmentationCamera.Render(); //Limpar a textura com a cor de fundo (c�u) UMA VEZ
-        segmentationCamera.clearFlags = CameraClearFlags.Nothing;
-        foreach (var mapping in layerMappings) {
-            int id = mapping.Value;
-            int layerMask = 1 << LayerMask.NameToLayer(mapping.Key);
-            Shader.SetGlobalFloat("_SegmentationID", (float)id);
-            segmentationCamera.cullingMask = layerMask;
-            segmentationCamera.Render();
-            Graphics.Blit(rtFull, rtHalf);
+        segmentationCamera.cullingMask = ~0;
+        segmentationCamera.Render();
 
+        Graphics.Blit(rtFull, rtHalf);
 
-            string fileName = $"capture_seg_{layerMask}_{System.DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}.jpg";
-            string fullPath = Path.Combine(captureFolder, fileName);
-            Texture2D screenShot = new Texture2D(newWidth, newHeight, TextureFormat.RGB24, false);
-            RenderTexture.active = rtHalf;
-            screenShot.ReadPixels(new Rect(0, 0, newWidth, newHeight), 0, 0);
-            screenShot.Apply(); // Aplica as mudan�as de ReadPixels
-            byte[] bytes = screenShot.EncodeToJPG(95);
+        string fileName = $"capture_seg_by_layer_{System.DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}.jpg";
+        string fullPath = Path.Combine(captureFolder, fileName);
+        Texture2D screenShot = new Texture2D(newWidth, newHeight, TextureFormat.RGB24, false);
+        RenderTexture.active = rtHalf;
+        screenShot.ReadPixels(new Rect(0, 0, newWidth, newHeight), 0, 0);
+        screenShot.Apply();
+        byte[] bytes = screenShot.EncodeToJPG(95);
 
-            try {
-                File.WriteAllBytes(fullPath, bytes);
-            } catch (IOException ex) {
-                Debug.LogError($"Erro ao salvar o arquivo: {ex.Message}");
-            }
-            Destroy(screenShot);
+        try {
+            File.WriteAllBytes(fullPath, bytes);
+        } catch (IOException ex) {
+            Debug.LogError($"Erro ao salvar o arquivo: {ex.Message}");
+        }
+        Destroy(screenShot);
+
+        // Limpeza
+        segmentationCamera.targetTexture = prevCameraRT;
+        RenderTexture.active = prevActiveRT;
+        RenderTexture.ReleaseTemporary(rtFull);
+        RenderTexture.ReleaseTemporary(rtHalf);
+    }
+
+    private void SaveSegmentationCameraByTag() {
+        if (segmentationCamera == null || segmentationShader == null) {
+            return;
         }
 
+        var allRenderers = FindObjectsOfType<Renderer>();
+        var tagsInUse = new HashSet<string>();
+        foreach (var renderer in allRenderers) {
+            tagsInUse.Add(renderer.gameObject.tag);
+        }
 
-        // 8. Limpeza de recursos para evitar vazamento de mem�ria
+        var tagMappings = new Dictionary<string, int>();
+        int segmentationIdCounter = 1; // ID 0 é o fundo
+        foreach (var tagName in tagsInUse) {
+            tagMappings.Add(tagName, segmentationIdCounter);
+            segmentationIdCounter++;
+        }
+
+        var propBlock = new MaterialPropertyBlock();
+        foreach (var renderer in allRenderers) {
+            if (!renderer.isVisible) continue;
+            string objectTag = renderer.gameObject.tag;
+            if (tagMappings.TryGetValue(objectTag, out int segmentationId)) {
+                renderer.GetPropertyBlock(propBlock);
+                propBlock.SetFloat(SegmentationIDProp, (float)segmentationId);
+                renderer.SetPropertyBlock(propBlock);
+            }
+        }
+
+        int newWidth = segmentationCamera.pixelWidth / 2;
+        int newHeight = segmentationCamera.pixelHeight / 2;
+
+        RenderTexture rtFull = RenderTexture.GetTemporary(segmentationCamera.pixelWidth, segmentationCamera.pixelHeight, 24);
+        RenderTexture rtHalf = RenderTexture.GetTemporary(newWidth, newHeight, 0);
+
+        RenderTexture prevActiveRT = RenderTexture.active;
+        RenderTexture prevCameraRT = segmentationCamera.targetTexture;
+
+        segmentationCamera.targetTexture = rtFull;
+        segmentationCamera.clearFlags = CameraClearFlags.SolidColor;
+        segmentationCamera.cullingMask = ~0;
+        segmentationCamera.Render();
+
+        Graphics.Blit(rtFull, rtHalf);
+
+        string fileName = $"capture_seg_by_tag_{System.DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}.jpg";
+        string fullPath = Path.Combine(captureFolder, fileName);
+        Texture2D screenShot = new Texture2D(newWidth, newHeight, TextureFormat.RGB24, false);
+        RenderTexture.active = rtHalf;
+        screenShot.ReadPixels(new Rect(0, 0, newWidth, newHeight), 0, 0);
+        screenShot.Apply();
+        byte[] bytes = screenShot.EncodeToJPG(95);
+
+        try {
+            File.WriteAllBytes(fullPath, bytes);
+        } catch (IOException ex) {
+            Debug.LogError($"Erro ao salvar o arquivo: {ex.Message}");
+        }
+        Destroy(screenShot);
+
+        // Limpeza
         segmentationCamera.targetTexture = prevCameraRT;
         RenderTexture.active = prevActiveRT;
         RenderTexture.ReleaseTemporary(rtFull);
