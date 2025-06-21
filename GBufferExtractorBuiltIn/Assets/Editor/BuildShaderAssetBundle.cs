@@ -15,7 +15,10 @@ public class BuildShaderAssetBundle
             "Assets/Shaders/LocalNormalShader.shader",
             "Assets/Shaders/DepthShader.shader",
             "Assets/Shaders/AlbedoShader.shader",
-            "Assets/Shaders/SegmentationShader.shader"
+            "Assets/Shaders/SegmentationShader.shader",
+            "Assets/Shaders/SpecularShader.shader",
+            "Assets/Shaders/GlossinessShader.shader",
+            "Assets/Shaders/EmissionShader.shader"
         };
 
         BuildPipeline.BuildAssetBundles(GBufferExtractor.assetBundleFolderPath, buildMap, BuildAssetBundleOptions.None, BuildTarget.StandaloneWindows64);

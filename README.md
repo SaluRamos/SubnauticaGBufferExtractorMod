@@ -22,8 +22,5 @@ At first, I will only be implementing the mod for the BuiltIn render pipeline.
 
 To-Do:
 - bepInEx first implementation
-- Specular map
-- Glossiness map
-- Emission/Atmosphere map
 - HDRP pipeline
 - URP pipeline

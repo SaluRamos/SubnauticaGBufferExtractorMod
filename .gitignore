@@ -23,5 +23,5 @@ GBufferExtractorBuiltIn/UserSettings
 GBufferExtractorBuiltIn/.vsconfig
 GBufferExtractorBuiltIn/UpgradeLog.htm
 
-BepInEx/
-BepInEx/bin
+BepInExBuiltIn/
+BepInExBuiltIn/bin

@@ -10,7 +10,7 @@ using UnityEngine.InputSystem;
 public class GBufferExtractor : MonoBehaviour
 {
 
-    public static string assetBundleFolderPath = "E:/UnityGBufferExtractorMod/BepInEx/Shaders";
+    public static string assetBundleFolderPath = "E:/UnityGBufferExtractorMod/BepInExBuiltIn/Shaders";
     private static string assetBundlePath = $"{assetBundleFolderPath}/bundle";
     private string captureFolder = "E:/EPE/data/game_gbuffers/bepinex"; //local onde as imagens serão salvas
 
@@ -36,6 +36,16 @@ public class GBufferExtractor : MonoBehaviour
 
     private Shader segmentationShader;
     private Camera segmentationCamera;
+    private static readonly int SegmentationIDProp = Shader.PropertyToID("_SegmentationID");
+
+    private Shader specularShader;
+    private Camera specularCamera;
+
+    private Shader glossinessShader;
+    private Camera glossinessCamera;
+
+    private Shader emissionShader;
+    private Camera emissionCamera;
 
     void Start() {
         LoadShaders();
@@ -59,12 +69,15 @@ public class GBufferExtractor : MonoBehaviour
                 timer = 0f;
                 LoadShaders();
                 SaveCameraImage(mainCam);
-                // SaveCameraImage(worldNormalCamera);
-                // SaveCameraImage(localNormalCamera);
-                // SaveCameraImage(depthCamera);
-                // SaveCameraImage(albedoCamera);
+                SaveCameraImage(worldNormalCamera);
+                SaveCameraImage(localNormalCamera);
+                SaveCameraImage(depthCamera);
+                SaveCameraImage(albedoCamera);
                 SaveSegmentationCameraByLayer();
                 SaveSegmentationCameraByTag();
+                SaveCameraImage(specularCamera);
+                SaveCameraImage(glossinessCamera);
+                SaveCameraImage(emissionCamera);
             }
         }
     }
@@ -78,6 +91,9 @@ public class GBufferExtractor : MonoBehaviour
             LoadDepthCamera(mainCam, false);
             LoadAlbedoCamera(mainCam, false);
             LoadSegmentationCamera(mainCam, false);
+            LoadSpecularCamera(mainCam, false);
+            LoadGlossinessCamera(mainCam, false);
+            LoadEmissionCamera(mainCam, false);
             //GameObject.Destroy(mainCam);
             loadedShaders = true;
         }
@@ -202,6 +218,78 @@ public class GBufferExtractor : MonoBehaviour
         }
     }
 
+    private void LoadSpecularCamera(Camera mainCam, bool active) {
+        if (specularShader == null) {
+            specularCamera = new GameObject("SpecularCamera").AddComponent<Camera>();
+            specularCamera.transform.SetParent(mainCam.transform.parent);
+            specularCamera.transform.position = mainCam.transform.position;
+            specularCamera.transform.rotation = mainCam.transform.rotation;
+            specularCamera.transform.localScale = mainCam.transform.localScale;
+            specularCamera.cullingMask = ~0;
+            specularCamera.fieldOfView = mainCam.fieldOfView;
+            specularCamera.nearClipPlane = mainCam.nearClipPlane;
+            specularCamera.farClipPlane = mainCam.farClipPlane;
+            specularCamera.depth = mainCam.depth;
+            specularCamera.clearFlags = CameraClearFlags.SolidColor;
+            specularCamera.backgroundColor = new Color(0f, 0f, 0f, 1f);
+            specularCamera.enabled = active;
+            specularShader = LoadExternalShader(assetBundlePath, "SpecularShader");
+            if (!specularShader)
+            {
+                Debug.Log("'SpecularShader' não encontrado no bundle!");
+            }
+            specularCamera.SetReplacementShader(specularShader, "");
+        }
+    }
+
+    private void LoadGlossinessCamera(Camera mainCam, bool active) {
+        if (glossinessShader == null) {
+            glossinessCamera = new GameObject("GlossinessCamera").AddComponent<Camera>();
+            glossinessCamera.transform.SetParent(mainCam.transform.parent);
+            glossinessCamera.transform.position = mainCam.transform.position;
+            glossinessCamera.transform.rotation = mainCam.transform.rotation;
+            glossinessCamera.transform.localScale = mainCam.transform.localScale;
+            glossinessCamera.cullingMask = ~0;
+            glossinessCamera.fieldOfView = mainCam.fieldOfView;
+            glossinessCamera.nearClipPlane = mainCam.nearClipPlane;
+            glossinessCamera.farClipPlane = mainCam.farClipPlane;
+            glossinessCamera.depth = mainCam.depth;
+            glossinessCamera.clearFlags = CameraClearFlags.SolidColor;
+            glossinessCamera.backgroundColor = new Color(1f, 1f, 1f, 1f);
+            glossinessCamera.enabled = active;
+            glossinessShader = LoadExternalShader(assetBundlePath, "GlossinessShader");
+            if (!emissionShader)
+            {
+                Debug.Log("'glossinessShader' não encontrado no bundle!");
+            }
+            glossinessCamera.SetReplacementShader(glossinessShader, "");
+        }
+    }
+
+    private void LoadEmissionCamera(Camera mainCam, bool active) {
+        if (emissionShader == null) {
+            emissionCamera = new GameObject("EmissionCamera").AddComponent<Camera>();
+            emissionCamera.transform.SetParent(mainCam.transform.parent);
+            emissionCamera.transform.position = mainCam.transform.position;
+            emissionCamera.transform.rotation = mainCam.transform.rotation;
+            emissionCamera.transform.localScale = mainCam.transform.localScale;
+            emissionCamera.cullingMask = ~0;
+            emissionCamera.fieldOfView = mainCam.fieldOfView;
+            emissionCamera.nearClipPlane = mainCam.nearClipPlane;
+            emissionCamera.farClipPlane = mainCam.farClipPlane;
+            emissionCamera.depth = mainCam.depth;
+            emissionCamera.clearFlags = CameraClearFlags.SolidColor;
+            emissionCamera.backgroundColor = new Color(1f, 1f, 1f, 1f);
+            emissionCamera.enabled = active;
+            emissionShader = LoadExternalShader(assetBundlePath, "EmissionShader");
+            if (!emissionShader)
+            {
+                Debug.Log("'emissionShader' não encontrado no bundle!");
+            }
+            emissionCamera.SetReplacementShader(specularShader, "");
+        }
+    }
+
     Shader LoadExternalShader(string bundlePath, string shaderName) {
         var bundle = AssetBundle.LoadFromFile(bundlePath);
 
@@ -266,8 +354,6 @@ public class GBufferExtractor : MonoBehaviour
         Destroy(screenShot);
 
     }
-
-    private static readonly int SegmentationIDProp = Shader.PropertyToID("_SegmentationID");
 
     private void SaveSegmentationCameraByLayer() {
         if (segmentationCamera == null || segmentationShader == null) {
