@@ -257,9 +257,9 @@ public class GBufferExtractor : MonoBehaviour {
             glossinessCamera.backgroundColor = new Color(1f, 1f, 1f, 1f);
             glossinessCamera.enabled = active;
             glossinessShader = LoadExternalShader(assetBundlePath, "GlossinessShader");
-            if (!emissionShader)
+            if (!glossinessShader)
             {
-                Debug.Log("'glossinessShader' não encontrado no bundle!");
+                Debug.Log("'GlossinessShader' não encontrado no bundle!");
             }
             glossinessCamera.SetReplacementShader(glossinessShader, "");
         }
