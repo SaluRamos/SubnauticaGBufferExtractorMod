@@ -25,8 +25,6 @@ namespace GBufferCapture {
         private float timer = 0f;
         private float captureInterval = 0.5f; // 500 ms
 
-        private bool loadedShaders = false;
-
         private string lastSceneName;
         private Camera lastMainCamera;
         private Camera mainCam;
@@ -111,13 +109,10 @@ namespace GBufferCapture {
             }
 
             string sceneName = SceneManager.GetActiveScene().name;
-            lastSceneName = sceneName;
-            Camera[] cameras = Camera.allCameras;
             Debug.Log("actual scene name: " + sceneName);
-            Debug.Log("amount scene cams: " + cameras.Length);
-            foreach (Camera cam in cameras) {
-                Debug.Log($"Camera: {cam.name}, enabled: {cam.enabled}, pos: {cam.transform.position}, rot: {cam.transform.rotation}");
-            }
+            lastSceneName = sceneName;
+
+            LogAllCameras();
 
             foreach (var entry in cameraToggleEntries.Values) { 
                 Config.Remove(entry.Definition);
@@ -141,6 +136,14 @@ namespace GBufferCapture {
         }
 
         private void ResetCustomCameras() {
+            GameObject.Destroy(worldNormalCamera);
+            GameObject.Destroy(localNormalCamera);
+            GameObject.Destroy(depthCamera);
+            GameObject.Destroy(albedoCamera);
+            GameObject.Destroy(segmentationCamera);
+            GameObject.Destroy(specularCamera);
+            GameObject.Destroy(glossinessCamera);
+            GameObject.Destroy(emissionCamera);
             worldNormalCamera = null;
             localNormalCamera = null;
             depthCamera = null;
@@ -151,7 +154,52 @@ namespace GBufferCapture {
             emissionCamera = null;
         }
 
+        private void LogAllCameras() {
+            Camera[] cameras = Camera.allCameras;
+            Debug.Log("amount scene cams: " + cameras.Length);
+            foreach (Camera cam in cameras) {
+                Debug.Log($"Camera: {cam.name}, enabled: {cam.enabled}, depth: {cam.depth}, far clip plane: {cam.farClipPlane}, pos: {cam.transform.position}, rot: {cam.transform.rotation}");
+            }
+            // Logger.LogInfo("================ DUMP DA HIERARQUIA DA CENA ================");
+            // DumpSceneHierarchy();
+            // Logger.LogInfo("================ FIM DO DUMP DA HIERARQUIA ================");
+            // foreach (var pair in GetTags()) {
+            //     Debug.Log($"TAG {pair.Value} = {pair.Key}");
+            // }
+            // foreach (var pair in GetLayers()) {
+            //     Debug.Log($"LAYER {pair.Value} = {pair.Key}");
+            // }
+        }
+
+        private void DumpSceneHierarchy() {
+            Scene activeScene = SceneManager.GetActiveScene();
+            GameObject[] rootObjects = activeScene.GetRootGameObjects();
+            foreach (var rootObject in rootObjects) {
+                DumpGameObjectRecursive(rootObject, "");
+            }
+        }
+
+        private void DumpGameObjectRecursive(GameObject obj, string indent) {
+            if (obj == null) return;
+            if (obj.name != "ChunkGrass(Clone)" && obj.name != "ChunkLayer(Clone)" && obj.name != "Chunk(Clone)" && obj.name != "ChunkCollider(Clone)") {
+                Logger.LogInfo($"{indent}+ {obj.name} (Tag: {obj.tag}, Layer: {LayerMask.LayerToName(obj.layer)}, Ativo: {obj.activeSelf})");
+            }
+            if (obj.tag != "Creature" && obj.name != "Base(Clone)") {
+                foreach (Transform child in obj.transform) {
+                    DumpGameObjectRecursive(child.gameObject, indent + "  ");
+                }
+            }
+        }
+
         void Update() {
+            #if ENABLE_INPUT_SYSTEM
+                if (Keyboard.current != null && Keyboard.current.f12Key.wasPressedThisFrame) {
+            #else
+                if (Input.GetKeyDown(KeyCode.F12)) {
+            #endif
+                    LogAllCameras();
+                }
+
             #if ENABLE_INPUT_SYSTEM
                 if (Keyboard.current != null && Keyboard.current.f11Key.wasPressedThisFrame) {
             #else
@@ -177,24 +225,31 @@ namespace GBufferCapture {
                         Logger.LogDebug("No camera selected");
                         return;
                     }
-                    if (lastSceneName != SceneManager.GetActiveScene().name) {
+                    if (lastSceneName != SceneManager.GetActiveScene().name){
                         Logger.LogDebug("You need to update scene cameras");
                         return;
                     }
-                    LoadShaders();
-                    string timestamp = $"{System.DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}";
-                    SaveCameraImage(mainCam, timestamp);
-                    SaveCameraImage(worldNormalCamera, timestamp);
-                    //SaveCameraImage(localNormalCamera, timestamp);
-                    SaveCameraImage(depthCamera, timestamp);
-                    SaveCameraImage(albedoCamera, timestamp);
-                    SaveSegmentationCameraByLayer(timestamp);
-                    SaveSegmentationCameraByTag(timestamp);
-                    //SaveCameraImage(specularCamera, timestamp);
-                    //SaveCameraImage(glossinessCamera, timestamp);
-                    //SaveCameraImage(emissionCamera, timestamp);
+                    StartCoroutine(Capture());
                 }
             }
+        }
+
+        private IEnumerator Capture() {
+            isCapturing = false;
+            LoadShaders();
+            string timestamp = $"{System.DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}";
+            yield return StartCoroutine(CaptureFinalFrameCoroutine($"{timestamp}_capture_main.jpg"));
+            //SaveCameraImage(mainCam, timestamp);
+            //SaveCameraImage(worldNormalCamera, timestamp);
+            //SaveCameraImage(localNormalCamera, timestamp);
+            SaveCameraImage(depthCamera, timestamp);
+            //SaveCameraImage(albedoCamera, timestamp);
+            //SaveSegmentationCameraByLayer(timestamp);
+            //SaveSegmentationCameraByTag(timestamp);
+            //SaveCameraImage(specularCamera, timestamp);
+            //SaveCameraImage(glossinessCamera, timestamp);
+            //SaveCameraImage(emissionCamera, timestamp);
+            isCapturing = true;
         }
 
         private void LoadShaders() {
@@ -208,13 +263,14 @@ namespace GBufferCapture {
                 LoadSpecularCamera(mainCam, false);
                 LoadGlossinessCamera(mainCam, false);
                 LoadEmissionCamera(mainCam, false);
-                //GameObject.Destroy(mainCam);
+                // GameObject.Destroy(mainCam);
                 lastMainCamera = mainCam;
             }
         }
 
         private void LoadWorldNormalCamera(Camera mainCam, bool active) {
             if (worldNormalCamera == null) {
+                Debug.Log("Criando WorldNormalCamera");
                 worldNormalCamera = new GameObject("WorldNormalCamera").AddComponent<Camera>();
                 worldNormalCamera.transform.SetParent(mainCam.transform.parent);
                 worldNormalCamera.transform.position = mainCam.transform.position;
@@ -238,8 +294,8 @@ namespace GBufferCapture {
         }
 
         private void LoadLocalNormalCamera(Camera mainCam, bool active) {
-            if (localNormalShader == null)
-            {
+            if (localNormalShader == null) {
+                Debug.Log("Criando LocalNormalCamera");
                 localNormalCamera = new GameObject("LocalNormalCamera").AddComponent<Camera>();
                 localNormalCamera.transform.SetParent(mainCam.transform.parent);
                 localNormalCamera.transform.position = mainCam.transform.position;
@@ -263,31 +319,46 @@ namespace GBufferCapture {
         }
 
         private void LoadDepthCamera(Camera mainCam, bool active) {
-            if (depthShader == null) {
-                depthCamera = new GameObject("DepthCamera").AddComponent<Camera>();
-                depthCamera.transform.SetParent(mainCam.transform.parent);
-                depthCamera.transform.position = mainCam.transform.position;
-                depthCamera.transform.rotation = mainCam.transform.rotation;
-                depthCamera.transform.localScale = mainCam.transform.localScale;
-                depthCamera.cullingMask = ~0;
-                depthCamera.fieldOfView = mainCam.fieldOfView;
-                depthCamera.nearClipPlane = mainCam.nearClipPlane;
-                depthCamera.farClipPlane = mainCam.farClipPlane;
-                depthCamera.depth = mainCam.depth;
-                depthCamera.clearFlags = CameraClearFlags.SolidColor;
-                depthCamera.backgroundColor = new Color(1f, 1f, 1f, 1.0f);
-                depthCamera.enabled = active;
+            if (depthShader == null)
+            {
+                Debug.Log("Criando DepthCamera");
+                // GameObject clonedCamObject = GameObject.Instantiate(mainCam.gameObject, mainCam.transform.parent);
+                // clonedCamObject.name = "DepthCamera";
+                // depthCamera = clonedCamObject.GetComponent<Camera>();
+                // // depthCamera = new GameObject("DepthCamera").AddComponent<Camera>();
+                // // depthCamera.transform.SetParent(mainCam.transform.parent, false);
+                // // depthCamera.transform.localPosition = Vector3.zero;
+                // // depthCamera.transform.localRotation = Quaternion.identity;
+                // // depthCamera.transform.localScale = Vector3.one;
+                // depthCamera.cullingMask = ~0;
+                // depthCamera.fieldOfView = mainCam.fieldOfView;
+                // depthCamera.nearClipPlane = mainCam.nearClipPlane;
+                // depthCamera.farClipPlane = mainCam.farClipPlane;
+                // depthCamera.depth = mainCam.depth;
+                // depthCamera.clearFlags = CameraClearFlags.SolidColor;
+                // depthCamera.backgroundColor = new Color(1f, 1f, 1f, 1.0f);
+                // depthCamera.enabled = active;
+                // depthShader = LoadExternalShader(assetBundlePath, "DepthShader");
+                // if (!depthShader)
+                // {
+                //     Debug.Log("'DepthShader' não encontrado no bundle!");
+                // }
+                // // depthCamera.SetReplacementShader(depthShader, "");
+
+                mainCam.clearFlags = CameraClearFlags.SolidColor;
+                mainCam.backgroundColor = new Color(1f, 1f, 1f, 1.0f);
                 depthShader = LoadExternalShader(assetBundlePath, "DepthShader");
                 if (!depthShader)
                 {
                     Debug.Log("'DepthShader' não encontrado no bundle!");
                 }
-                depthCamera.SetReplacementShader(depthShader, "");
+                mainCam.SetReplacementShader(depthShader, "");
             }
         }
 
         private void LoadAlbedoCamera(Camera mainCam, bool active) {
             if (albedoShader == null) {
+                Debug.Log("Criando AlbedoCamera");
                 albedoCamera = new GameObject("AlbedoCamera").AddComponent<Camera>();
                 albedoCamera.transform.SetParent(mainCam.transform.parent);
                 albedoCamera.transform.position = mainCam.transform.position;
@@ -312,6 +383,7 @@ namespace GBufferCapture {
 
         private void LoadSegmentationCamera(Camera mainCam, bool active) {
             if (segmentationShader == null) {
+                Debug.Log("Criando SegmentationCamera");
                 segmentationCamera = new GameObject("SegmentationCamera").AddComponent<Camera>();
                 segmentationCamera.transform.SetParent(mainCam.transform.parent);
                 segmentationCamera.transform.position = mainCam.transform.position;
@@ -334,6 +406,7 @@ namespace GBufferCapture {
 
         private void LoadSpecularCamera(Camera mainCam, bool active) {
             if (specularShader == null) {
+                Debug.Log("Criando SpecularCamera");
                 specularCamera = new GameObject("SpecularCamera").AddComponent<Camera>();
                 specularCamera.transform.SetParent(mainCam.transform.parent);
                 specularCamera.transform.position = mainCam.transform.position;
@@ -358,6 +431,7 @@ namespace GBufferCapture {
 
         private void LoadGlossinessCamera(Camera mainCam, bool active) {
             if (glossinessShader == null) {
+                Debug.Log("Criando GlossinessCamera");
                 glossinessCamera = new GameObject("GlossinessCamera").AddComponent<Camera>();
                 glossinessCamera.transform.SetParent(mainCam.transform.parent);
                 glossinessCamera.transform.position = mainCam.transform.position;
@@ -382,6 +456,7 @@ namespace GBufferCapture {
 
         private void LoadEmissionCamera(Camera mainCam, bool active) {
             if (emissionShader == null) {
+                Debug.Log("Criando EmissionCamera");
                 emissionCamera = new GameObject("EmissionCamera").AddComponent<Camera>();
                 emissionCamera.transform.SetParent(mainCam.transform.parent);
                 emissionCamera.transform.position = mainCam.transform.position;
@@ -426,6 +501,21 @@ namespace GBufferCapture {
             return loadedShader;
         }
 
+        private IEnumerator CaptureFinalFrameCoroutine(string fileName) {
+            yield return new WaitForEndOfFrame();
+            Texture2D screenShot = new Texture2D(Screen.width, Screen.height, TextureFormat.RGB24, false);
+            screenShot.ReadPixels(new Rect(0, 0, Screen.width, Screen.height), 0, 0);
+            screenShot.Apply();
+            byte[] bytes = screenShot.EncodeToJPG(95); // 95 é a qualidade
+            Destroy(screenShot);
+            string fullPath = Path.Combine(captureFolder, fileName);
+            try {
+                File.WriteAllBytes(fullPath, bytes);
+            } catch (IOException ex) {
+                Debug.LogError($"Erro ao salvar o arquivo: {ex.Message}");
+            }
+        }
+
         private void SaveCameraImage(Camera cam, string timestamp) {
             if (cam == null) {
                 return;
@@ -434,7 +524,7 @@ namespace GBufferCapture {
             RenderTexture camTargetTex = cam.targetTexture;
             cam.targetTexture = rtFull;
             cam.Render();
-            SaveJPG($"capture_{cam.gameObject.name}_{timestamp}.jpg", cam, rtFull, camTargetTex);
+            SaveJPG($"{timestamp}_capture_{cam.gameObject.name}.jpg", cam, rtFull, camTargetTex);
         }
 
         private void SaveSegmentationCameraByLayer(string timestamp) {
@@ -442,17 +532,7 @@ namespace GBufferCapture {
                 return;
             }
 
-            var layerMappings = new Dictionary<string, int>();
-            int segmentationIdCounter = 1; // ID 0 é o fundo
-            for (int i = 0; i < 32; i++)
-            {
-                string layerName = LayerMask.LayerToName(i);
-                if (!string.IsNullOrEmpty(layerName))
-                {
-                    layerMappings.Add(layerName, segmentationIdCounter);
-                    segmentationIdCounter++;
-                }
-            }
+            var layerMappings = GetLayers();
 
             var allRenderers = FindObjectsOfType<Renderer>();
             var propBlock = new MaterialPropertyBlock();
@@ -474,7 +554,21 @@ namespace GBufferCapture {
             segmentationCamera.backgroundColor = new Color(0.2862f, 0.4941f, 0.6745f, 1f);
             segmentationCamera.cullingMask = ~0;
             segmentationCamera.Render();
-            SaveJPG($"capture_seg_by_layer_{timestamp}.jpg", segmentationCamera, rtFull, camTargetTex);
+            SaveJPG($"{timestamp}_capture_seg_by_layer.jpg", segmentationCamera, rtFull, camTargetTex);
+        }
+
+        private Dictionary<string, int> GetLayers() {
+            var layerMappings = new Dictionary<string, int>();
+            int segmentationIdCounter = 1; // ID 0 é o fundo
+            for (int i = 0; i < 32; i++) {
+                string layerName = LayerMask.LayerToName(i);
+                if (!string.IsNullOrEmpty(layerName)) {
+                    layerMappings.Add(layerName, segmentationIdCounter);
+                    segmentationIdCounter++;
+                }
+            }
+            Debug.Log($"Total de layers encontrados: {layerMappings.Count()}");
+            return layerMappings;
         }
 
         private void SaveSegmentationCameraByTag(string timestamp) {
@@ -512,7 +606,24 @@ namespace GBufferCapture {
             segmentationCamera.clearFlags = CameraClearFlags.SolidColor;
             segmentationCamera.cullingMask = ~0;
             segmentationCamera.Render();
-            SaveJPG($"capture_seg_by_tag_{timestamp}.jpg", segmentationCamera, rtFull, camTargetTex);
+            SaveJPG($"{timestamp}_capture_seg_by_tag.jpg", segmentationCamera, rtFull, camTargetTex);
+        }
+
+        private Dictionary<string, int> GetTags() {
+            var tagsCount = new Dictionary<string, int>();
+            GameObject[] allGameObjects = GameObject.FindObjectsOfType<GameObject>();
+            foreach (GameObject go in allGameObjects) {
+                if (tagsCount.ContainsKey(go.tag))
+                {
+                    tagsCount[go.tag]++;
+                }
+                else
+                {
+                    tagsCount.Add(go.tag, 1);
+                }
+            }
+            Debug.Log($"Total de tags encontrados: {tagsCount.Count()}");
+            return tagsCount;
         }
 
         private void SaveJPG(string fileName, Camera cam, RenderTexture rtFull, RenderTexture camTargetTex) {

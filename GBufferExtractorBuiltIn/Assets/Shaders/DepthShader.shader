@@ -29,7 +29,6 @@ Shader "Unlit/DepthMap_Corrected"
                 v2f o;
                 o.pos = UnityObjectToClipPos(v.vertex);
                 
-                // Calcula a distância linear do objeto até a câmera (sempre positiva)
                 o.depth = -UnityObjectToViewPos(v.vertex).z;
 
                 return o;
@@ -37,15 +36,7 @@ Shader "Unlit/DepthMap_Corrected"
             
             fixed4 frag (v2f i) : SV_Target
             {
-                // CORREÇÃO AQUI:
-                // Normalizamos a profundidade dividindo-a pela distância do far plane da câmera.
-                // _ProjectionParams.z é uma variável interna do Unity que contém o valor do "far".
-                // `saturate` garante que o valor fique entre 0 e 1.
                 float depthValue = saturate(i.depth / _ProjectionParams.z);
-                
-                // Retorna o valor como escala de cinza.
-                // Perto (depth ~ 0) -> depthValue ~ 0 -> Preto
-                // Longe (depth ~ far) -> depthValue ~ 1 -> Branco
                 return fixed4(depthValue, depthValue, depthValue, 1.0);
             }
             ENDCG

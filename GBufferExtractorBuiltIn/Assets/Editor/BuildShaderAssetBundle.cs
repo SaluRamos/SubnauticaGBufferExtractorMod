@@ -18,7 +18,8 @@ public class BuildShaderAssetBundle
             "Assets/Shaders/SegmentationShader.shader",
             "Assets/Shaders/SpecularShader.shader",
             "Assets/Shaders/GlossinessShader.shader",
-            "Assets/Shaders/EmissionShader.shader"
+            "Assets/Shaders/EmissionShader.shader",
+            "Assets/Shaders/Passthrough.shader"
         };
 
         BuildPipeline.BuildAssetBundles(GBufferExtractor.assetBundleFolderPath, buildMap, BuildAssetBundleOptions.None, BuildTarget.StandaloneWindows64);

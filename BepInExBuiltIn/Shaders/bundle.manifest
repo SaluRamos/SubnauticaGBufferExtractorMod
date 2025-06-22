@@ -1,9 +1,9 @@
 ManifestFileVersion: 0
-CRC: 428608799
+CRC: 669655507
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: eff01aacd6f325f21650605562883eb5
+    Hash: 15a040b87e9b69b33839b64ebbc8c8eb
   TypeTreeHash:
     serializedVersion: 2
     Hash: 55d48f4ad9c3b13330b9eb5ee5686477
@@ -17,6 +17,7 @@ Assets:
 - Assets/Shaders/WorldNormalShader.shader
 - Assets/Shaders/LocalNormalShader.shader
 - Assets/Shaders/EmissionShader.shader
+- Assets/Shaders/Passthrough.shader
 - Assets/Shaders/SpecularShader.shader
 - Assets/Shaders/AlbedoShader.shader
 - Assets/Shaders/SegmentationShader.shader
