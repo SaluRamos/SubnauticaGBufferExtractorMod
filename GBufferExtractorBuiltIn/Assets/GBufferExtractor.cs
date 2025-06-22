@@ -60,8 +60,7 @@ public class GBufferExtractor : MonoBehaviour {
                 Debug.Log($"Captura de G-Buffer {(isCapturing ? "iniciada" : "parada")}");
             }
 
-        if (isCapturing)
-        {
+        if (isCapturing) {
             timer += Time.deltaTime;
             if (timer >= captureInterval) {
                 timer = 0f;
