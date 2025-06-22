@@ -21,6 +21,12 @@ You also need to generate the AssetsBundle for the shaders, just execute in the 
 At first, I will only be implementing the mod for the BuiltIn render pipeline.
 
 To-Do:
-- bepInEx first implementation
 - HDRP pipeline
 - URP pipeline
+
+## Dependencies
+
+Unity 2019.4.16f1: https://unity.com/releases/editor/archive
+
+- https://github.com/BepInEx/BepInEx
+- https://github.com/BepInEx/BepInEx.ConfigurationManager

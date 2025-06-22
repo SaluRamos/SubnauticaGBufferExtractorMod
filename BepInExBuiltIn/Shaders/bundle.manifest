@@ -1,0 +1,23 @@
+ManifestFileVersion: 0
+CRC: 428608799
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: eff01aacd6f325f21650605562883eb5
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 55d48f4ad9c3b13330b9eb5ee5686477
+HashAppended: 0
+ClassTypes:
+- Class: 48
+  Script: {instanceID: 0}
+Assets:
+- Assets/Shaders/GlossinessShader.shader
+- Assets/Shaders/DepthShader.shader
+- Assets/Shaders/WorldNormalShader.shader
+- Assets/Shaders/LocalNormalShader.shader
+- Assets/Shaders/EmissionShader.shader
+- Assets/Shaders/SpecularShader.shader
+- Assets/Shaders/AlbedoShader.shader
+- Assets/Shaders/SegmentationShader.shader
+Dependencies: []

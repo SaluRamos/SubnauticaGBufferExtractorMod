@@ -8,6 +8,13 @@
 Build/
 Obj/
 
+GBufferExtractorBuiltIn/Library
+GBufferExtractorBuiltIn/Logs
+GBufferExtractorBuiltIn/Temp
+GBufferExtractorBuiltIn/UserSettings
+GBufferExtractorBuiltIn/.vsconfig
+GBufferExtractorBuiltIn/UpgradeLog.htm
+
 GBufferExtractorURP/
 GBufferExtractorURP/Library
 GBufferExtractorURP/Logs
@@ -16,12 +23,4 @@ GBufferExtractorURP/UserSettings
 GBufferExtractorURP/.vsconfig
 GBufferExtractorURP/UpgradeLog.htm
 
-GBufferExtractorBuiltIn/Library
-GBufferExtractorBuiltIn/Logs
-GBufferExtractorBuiltIn/Temp
-GBufferExtractorBuiltIn/UserSettings
-GBufferExtractorBuiltIn/.vsconfig
-GBufferExtractorBuiltIn/UpgradeLog.htm
-
-BepInExBuiltIn/
 BepInExBuiltIn/bin
