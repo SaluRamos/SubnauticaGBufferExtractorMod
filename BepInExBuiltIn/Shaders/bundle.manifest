@@ -1,9 +1,9 @@
 ManifestFileVersion: 0
-CRC: 669655507
+CRC: 1945172305
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: 15a040b87e9b69b33839b64ebbc8c8eb
+    Hash: 203c850accd3a083479517922430907a
   TypeTreeHash:
     serializedVersion: 2
     Hash: 55d48f4ad9c3b13330b9eb5ee5686477
@@ -11,14 +11,10 @@ HashAppended: 0
 ClassTypes:
 - Class: 48
   Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
 Assets:
-- Assets/Shaders/GlossinessShader.shader
-- Assets/Shaders/DepthShader.shader
-- Assets/Shaders/WorldNormalShader.shader
-- Assets/Shaders/LocalNormalShader.shader
-- Assets/Shaders/EmissionShader.shader
-- Assets/Shaders/Passthrough.shader
-- Assets/Shaders/SpecularShader.shader
-- Assets/Shaders/AlbedoShader.shader
-- Assets/Shaders/SegmentationShader.shader
+- Assets/Shaders/ShaderInterception/Triplanar.shader
+- Assets/Shaders/Post/DepthPost.shader
+- Assets/Shaders/ShaderInterception/TriplanarWithCapping.shader
+- Assets/Shaders/ShaderReplacement/UnlitAlbedo.shader
 Dependencies: []

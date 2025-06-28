@@ -15,12 +15,4 @@ GBufferExtractorBuiltIn/UserSettings
 GBufferExtractorBuiltIn/.vsconfig
 GBufferExtractorBuiltIn/UpgradeLog.htm
 
-GBufferExtractorURP/
-GBufferExtractorURP/Library
-GBufferExtractorURP/Logs
-GBufferExtractorURP/Temp
-GBufferExtractorURP/UserSettings
-GBufferExtractorURP/.vsconfig
-GBufferExtractorURP/UpgradeLog.htm
-
 BepInExBuiltIn/bin

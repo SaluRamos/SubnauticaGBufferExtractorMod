@@ -10,16 +10,11 @@ public class BuildShaderAssetBundle
         AssetBundleBuild[] buildMap = new AssetBundleBuild[2];
 
         buildMap[0].assetBundleName = "bundle";
-        buildMap[0].assetNames = new string[] { 
-            "Assets/Shaders/WorldNormalShader.shader",
-            "Assets/Shaders/LocalNormalShader.shader",
-            "Assets/Shaders/DepthShader.shader",
-            "Assets/Shaders/AlbedoShader.shader",
-            "Assets/Shaders/SegmentationShader.shader",
-            "Assets/Shaders/SpecularShader.shader",
-            "Assets/Shaders/GlossinessShader.shader",
-            "Assets/Shaders/EmissionShader.shader",
-            "Assets/Shaders/Passthrough.shader"
+        buildMap[0].assetNames = new string[] {
+            "Assets/Shaders/ShaderReplacement/UnlitAlbedo.shader",
+            "Assets/Shaders/Post/DepthPost.shader",
+            "Assets/Shaders/ShaderInterception/Triplanar.shader",
+            "Assets/Shaders/ShaderInterception/TriplanarWithCapping.shader"
         };
 
         BuildPipeline.BuildAssetBundles(GBufferExtractor.assetBundleFolderPath, buildMap, BuildAssetBundleOptions.None, BuildTarget.StandaloneWindows64);

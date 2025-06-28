@@ -1,24 +1,18 @@
-Shader "Custom/GlossinessShader"
+Shader "Unlit/AlbedoOnly"
 {
     Properties
     {
-        _GlossMap ("Glossiness Map", 2D) = "white" {}
+        _MainTex ("Texture", 2D) = "white" {}
     }
-
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
         LOD 100
-
         Pass
         {
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
             #include "UnityCG.cginc"
-
-            sampler2D _GlossMap;
-            float4 _GlossMap_ST;
 
             struct appdata
             {
@@ -28,25 +22,26 @@ Shader "Custom/GlossinessShader"
 
             struct v2f
             {
+                float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
-                float4 vertex : SV_POSITION;
             };
+
+            sampler2D _MainTex;
 
             v2f vert (appdata v)
             {
                 v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = TRANSFORM_TEX(v.uv, _GlossMap);
+                o.pos = UnityObjectToClipPos(v.vertex);
+                o.uv = v.uv;
                 return o;
             }
 
-            fixed4 frag (v2f i) : SV_TARGET
+            fixed4 frag (v2f i) : SV_Target
             {
-                float gloss = tex2D(_GlossMap, i.uv).r;
-                return fixed4(gloss, gloss, gloss, 1); // Escala de cinza
+                return tex2D(_MainTex, i.uv); // Apenas o albedo
             }
             ENDCG
         }
     }
-    FallBack Off
+    Fallback Off
 }
