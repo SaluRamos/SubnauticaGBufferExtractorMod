@@ -24,52 +24,58 @@ Unity 2019.4.36f1: https://unity.com/releases/editor/archive
 
 - https://github.com/BepInEx/BepInEx
 - https://github.com/BepInEx/BepInEx.ConfigurationManager
-- 
+- https://github.com/AssetRipper/AssetRipper
+- https://github.com/sinai-dev/UnityExplorer
+
+## Extra Info
+
+Shaders used in WaterSurface:
+![alt text](readme_images/water_surface_shaders.png)
 
 Components in main Camera:
-[Info   : Unity Log] Componente mainCam: UnityEngine.Transform, Assembly: UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: UnityEngine.Camera, Assembly: UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: UnityEngine.FlareLayer, Assembly: UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: CullingCamera, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: ShaderGlobals, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: WaterscapeVolumeOnCamera, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: WaterSurfaceOnCamera, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: WaterSunShaftsOnCamera, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: WBOIT, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: LensWaterController, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: LensWater, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: RadiationsScreenFX, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: ExplosionScreenFX, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: DamageScreenFX, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: TeleportScreenFX, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: WarpScreenFX, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: MesmerizedScreenFX, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: MapRoomCameraScreenFX, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: TelepathyScreenFX, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: SonarScreenFX, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: EndSequenceWarpScreenFX, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: RadialBlurScreenFX, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: CyclopsSmokeScreenFX, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: UnityEngine.PostProcessing.PostProcessingBehaviour, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: ColorCorrection, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: VisualizeDepth, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: UWE.FrameTimeOverlay, Assembly: Assembly-CSharp-firstpass, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: LensWaterController, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: RadiationsScreenFXController, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: UnityStandardAssets.ImageEffects.Grayscale, Assembly: Assembly-CSharp-firstpass, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: MapRoomCameraScreenFXController, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: TeleportScreenFXController, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: WarpScreenFXController, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: MesmerizedScreenFXController, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: CyclopsSmokeScreenFXController, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: TelepathyScreenFXController, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: EndSequenceWarpScreenFXController, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: RadialBlurScreenFXController, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: MainCamera, Assembly: Assembly-CSharp-firstpass, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: MainCameraV2, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: UwePostProcessingManager, Assembly: Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: UnityEngine.StreamingController, Assembly: UnityEngine.StreamingModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-[Info   : Unity Log] Componente mainCam: FrameTimeRecorder, Assembly: Assembly-CSharp-firstpass, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+[Info   : Unity Log] Componente mainCam: UnityEngine.Transform, Assembly: UnityEngine.CoreModule
+[Info   : Unity Log] Componente mainCam: UnityEngine.Camera, Assembly: UnityEngine.CoreModule
+[Info   : Unity Log] Componente mainCam: UnityEngine.FlareLayer, Assembly: UnityEngine.CoreModule
+[Info   : Unity Log] Componente mainCam: CullingCamera, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: ShaderGlobals, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: WaterscapeVolumeOnCamera, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: WaterSurfaceOnCamera, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: WaterSunShaftsOnCamera, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: WBOIT, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: LensWaterController, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: LensWater, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: RadiationsScreenFX, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: ExplosionScreenFX, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: DamageScreenFX, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: TeleportScreenFX, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: WarpScreenFX, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: MesmerizedScreenFX, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: MapRoomCameraScreenFX, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: TelepathyScreenFX, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: SonarScreenFX, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: EndSequenceWarpScreenFX, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: RadialBlurScreenFX, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: CyclopsSmokeScreenFX, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: UnityEngine.PostProcessing.PostProcessingBehaviour, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: ColorCorrection, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: VisualizeDepth, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: UWE.FrameTimeOverlay, Assembly: Assembly-CSharp-firstpass
+[Info   : Unity Log] Componente mainCam: LensWaterController, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: RadiationsScreenFXController, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: UnityStandardAssets.ImageEffects.Grayscale, Assembly: Assembly-CSharp-firstpass
+[Info   : Unity Log] Componente mainCam: MapRoomCameraScreenFXController, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: TeleportScreenFXController, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: WarpScreenFXController, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: MesmerizedScreenFXController, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: CyclopsSmokeScreenFXController, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: TelepathyScreenFXController, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: EndSequenceWarpScreenFXController, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: RadialBlurScreenFXController, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: MainCamera, Assembly: Assembly-CSharp-firstpass
+[Info   : Unity Log] Componente mainCam: MainCameraV2, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: UwePostProcessingManager, Assembly: Assembly-CSharp
+[Info   : Unity Log] Componente mainCam: UnityEngine.StreamingController, Assembly: UnityEngine.StreamingModule
+[Info   : Unity Log] Componente mainCam: FrameTimeRecorder, Assembly: Assembly-CSharp-firstpass
 
 All used Shaders in game:
 [Info   : Unity Log] Found shader: Hidden/Internal-StencilWrite
