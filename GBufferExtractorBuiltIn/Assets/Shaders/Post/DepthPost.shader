@@ -2,12 +2,10 @@ Shader "Hidden/DepthPost"
 {
     Properties
     {
-        // _MainTex é a imagem colorida da cena, fornecida automaticamente pelo Graphics.Blit.
         _MainTex ("Texture", 2D) = "white" {}
     }
     SubShader
     {
-        // Sem culling, sem ZWrite, etc. É um passe 2D.
         Cull Off ZWrite Off ZTest Always
 
         Pass
@@ -18,12 +16,8 @@ Shader "Hidden/DepthPost"
             
             #include "UnityCG.cginc"
 
-            // O Unity preenche esta textura automaticamente por causa de 'depthTextureMode'.
             sampler2D _CameraDepthTexture;
             
-            // Variável opcional que você pode definir via script C#
-            // float _MaxDepth;
-
             struct appdata
             {
                 float4 vertex : POSITION; // Vértice do quad que cobre a tela
@@ -36,8 +30,6 @@ Shader "Hidden/DepthPost"
                 float4 vertex : SV_POSITION;
             };
 
-            // O vertex shader para um pós-processamento é quase sempre o mesmo.
-            // Ele apenas prepara o quad que cobrirá a tela.
             v2f vert (appdata v)
             {
                 v2f o;
@@ -45,20 +37,15 @@ Shader "Hidden/DepthPost"
                 o.uv = v.uv;
                 return o;
             }
-            
+
+            float _DepthCutoff;
+
             fixed4 frag (v2f i) : SV_Target
             {
-                // 1. Pega o valor bruto da textura de profundidade.
-                //    SAMPLE_DEPTH_TEXTURE é uma macro que lida com diferenças entre plataformas.
                 float rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
-
-                // 2. Converte o valor bruto (não-linear) para um valor linear entre [0, 1].
-                //    0 = perto (near clip plane), 1 = longe (far clip plane).
-                //    Esta é a forma mais fácil e robusta de visualizar a profundidade.
-                float linearDepth = Linear01Depth(rawDepth);
-                
-                // Retorna o valor de profundidade como uma cor em escala de cinza.
-                return fixed4(linearDepth, linearDepth, linearDepth, 1.0);
+                float worldDepth = LinearEyeDepth(rawDepth);
+                float clippedDepth = saturate(worldDepth / _DepthCutoff);
+                return fixed4(clippedDepth, clippedDepth, clippedDepth, 1.0);
             }
             ENDCG
         }

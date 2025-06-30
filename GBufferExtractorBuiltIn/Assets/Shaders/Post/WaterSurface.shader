@@ -1,0 +1,82 @@
+Shader "Hidden/WaterGBufferWriter"
+{
+    Properties
+    {
+        _WaterDisplacementMap("Displacement", 2D) = "black" {}
+        _NormalsTex("Normals", 2D) = "bump" {}
+        _WaterPatchLength("Patch Length", Float) = 256
+
+        _ReflectionColor ("Reflection Color", Color) = (1,1,1,1)
+        _RefractionColor ("Refraction Color", Color) = (1,1,1,1)
+        _SkyMap ("Skybox Cubemap", Cube) = "_Skybox" {}
+        _Refraction0 ("Fresnel Base", Range(0,1)) = 0.02
+    }
+    SubShader
+    {
+        Tags { "RenderType"="Opaque" }
+        Pass
+        {
+            Name "GBUFFER"
+            Tags { "LightMode" = "Deferred" }
+            Offset 0, 150
+            Cull Off
+            ZWrite On
+
+            CGPROGRAM
+            #pragma target 3.0
+            #pragma vertex vert_gbuffer
+            #pragma fragment frag_gbuffer
+            #include "UnityCG.cginc"
+
+            struct gbuffer_out {
+                float4 rt0 : SV_TARGET0;
+                float4 rt1 : SV_TARGET1;
+                float4 rt2 : SV_TARGET2;
+                float4 rt3 : SV_TARGET3;
+            };
+
+            sampler2D _WaterDisplacementMap;
+            sampler2D _NormalsTex;
+            float _WaterPatchLength;
+
+            struct v2f_gbuffer
+            {
+                float4 pos : SV_POSITION;
+                float2 uv_norm : TEXCOORD0; // UV para a textura de normais
+            };
+
+            // ===== LÓGICA DO VERTEX SHADER TRADUZIDA DO JOGO =====
+            v2f_gbuffer vert_gbuffer(appdata_base v)
+            {
+                v2f_gbuffer o;
+                float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
+                o.uv_norm = (worldPos.xz * 100.0) / _WaterPatchLength;
+
+                float dist_sq = dot(worldPos.xz - _WorldSpaceCameraPos.xz, worldPos.xz - _WorldSpaceCameraPos.xz);
+                float fade = saturate((200.0 - sqrt(dist_sq)) * 0.0052083);
+
+                float3 displacement = tex2Dlod(_WaterDisplacementMap, float4(o.uv_norm, 0, 0)).xyz;
+                displacement *= 0.01;
+
+                float3 finalWorldPos = (displacement * fade) + worldPos;
+                o.pos = mul(UNITY_MATRIX_VP, float4(finalWorldPos, 1.0));
+
+                return o;
+            }
+
+            gbuffer_out frag_gbuffer(v2f_gbuffer i)
+            {
+                gbuffer_out o;
+                o.rt0 = float4(0.05, 0.1, 0.15, 1.0); // Albedo
+                o.rt1 = float4(0.8, 0.8, 0.8, 0.9); // Specular/Smoothness
+                
+                // Lê as normais usando o mesmo UV. O _NormalsTex do jogo já está no formato correto.
+                o.rt2 = float4(tex2D(_NormalsTex, i.uv_norm).xyz, 1.0);
+                
+                o.rt3 = float4(0, 0, 0, 0); // Emission
+                return o;
+            }
+            ENDCG
+        }
+    }
+}
