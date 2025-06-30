@@ -4,12 +4,12 @@ capture the g-buffers of Subnautica and save them in PNG/JPG format to create ri
 
 the captured gbuffers are:
 - Final Render (WORKING)
-- World/Local Normal Map
+- World/Local Normal Map  (WORKING)
 - Depth Map (WORKING)
-- Albedo Map
-- Specular Map
-- Glossiness Map
-- ShaderID/Segmentation (Layer/Tag/Material)
+- Albedo Map (WORKING)
+- Specular Map (NOT EXACTLY WORKING)
+- Emission Map (NOT WORKING)
+- ShaderID/Segmentation (per Material)
 
 ![alt text](readme_images/gbuffers.png)
 
