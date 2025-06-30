@@ -20,6 +20,8 @@ namespace GBufferCapture {
     public class GBufferCapturePlugin : BaseUnityPlugin
     {
 
+        public static GBufferCapturePlugin instance { get; private set; }
+
         public static string assetBundleFolderPath = "E:/UnityGBufferExtractorMod/BepInExBuiltIn/Shaders";
         public static string assetBundlePath = $"{assetBundleFolderPath}/bundle";
         public string captureFolder = "E:/EPE/data/game_gbuffers/bepinex"; //local onde as imagens serão salvas
@@ -41,6 +43,7 @@ namespace GBufferCapture {
 
         private void Awake()
         {
+            instance = this;
             captureThreadSleep = Config.Bind("General", captureThreadSleepKey, 1.0f, new ConfigDescription("Set time between captures in seconds", new AcceptableValueRange<float>(0.0f, 10.0f)));
             captureThreadSleep.SettingChanged += ConfigSettingChanged;
 
@@ -71,7 +74,7 @@ namespace GBufferCapture {
             }
         }
 
-        private float mapsRenderDistance = 130f;
+        private float gbuffersMaxRenderDistance = 130f;
 
         private CommandBuffer depthCB;
         private RenderTexture depthRT;
@@ -86,7 +89,7 @@ namespace GBufferCapture {
             depthShader = LoadExternalShader(assetBundlePath, "DepthPost");
             depthMaterial = new Material(depthShader);
             depthMaterial.hideFlags = HideFlags.HideAndDontSave;
-            depthMaterial.SetFloat("_DepthCutoff", mapsRenderDistance);
+            depthMaterial.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
 
             mainCam.depthTextureMode = DepthTextureMode.Depth;
 
@@ -98,44 +101,65 @@ namespace GBufferCapture {
 
         private CommandBuffer normalCB;
         private RenderTexture normalRT;
+        private Shader normalShader;
+        private Material normalMaterial;
 
         private void SetupNormal()
         {
             normalRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
             normalRT.Create();
 
+            normalShader = LoadExternalShader(assetBundlePath, "NormalPost");
+            normalMaterial = new Material(normalShader);
+            normalMaterial.hideFlags = HideFlags.HideAndDontSave;
+            normalMaterial.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
+
             normalCB = new CommandBuffer();
             normalCB.name = "Capture Normal";
-            normalCB.Blit(BuiltinRenderTextureType.GBuffer2, normalRT);
-            mainCam.AddCommandBuffer(CameraEvent.AfterGBuffer, normalCB);
+            normalCB.Blit(BuiltinRenderTextureType.GBuffer2, normalRT, normalMaterial);
+            mainCam.AddCommandBuffer(CameraEvent.AfterEverything, normalCB);
         }
 
         private CommandBuffer albedoCB;
         private RenderTexture albedoRT;
+        private Shader albedoShader;
+        private Material albedoMaterial;
 
         private void SetupAlbedo()
         {
             albedoRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
             albedoRT.Create();
 
+            albedoShader = LoadExternalShader(assetBundlePath, "NormalPost");
+            albedoMaterial = new Material(albedoShader);
+            albedoMaterial.hideFlags = HideFlags.HideAndDontSave;
+            albedoMaterial.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
+
             albedoCB = new CommandBuffer();
             albedoCB.name = "Capture Albedo";
             albedoCB.Blit(BuiltinRenderTextureType.GBuffer0, albedoRT);
-            mainCam.AddCommandBuffer(CameraEvent.AfterGBuffer, albedoCB);
+            mainCam.AddCommandBuffer(CameraEvent.AfterEverything, albedoCB);
         }
 
         private CommandBuffer specularCB;
         private RenderTexture specularRT;
+        private Shader specularShader;
+        private Material specularMaterial;
 
         private void SetupSpecular()
         {
             specularRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
             specularRT.Create();
 
+            specularShader = LoadExternalShader(assetBundlePath, "NormalPost");
+            specularMaterial = new Material(specularShader);
+            specularMaterial.hideFlags = HideFlags.HideAndDontSave;
+            specularMaterial.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
+
             specularCB = new CommandBuffer();
             specularCB.name = "Capture Specular";
             specularCB.Blit(BuiltinRenderTextureType.GBuffer1, specularRT);
-            mainCam.AddCommandBuffer(CameraEvent.AfterGBuffer, specularCB);
+            mainCam.AddCommandBuffer(CameraEvent.AfterEverything, specularCB);
         }
 
         private WaterGBufferInjector injectorInstance;
@@ -146,6 +170,24 @@ namespace GBufferCapture {
                 return;
             }
             injectorInstance = mainCam.gameObject.AddComponent<WaterGBufferInjector>();
+        }
+
+        public void UpdateMapsRenderDistance(bool underwater)
+        {
+            if (underwater)
+            {
+                gbuffersMaxRenderDistance = 130f;
+                Debug.LogWarning("Evento detectado: Jogador entrou na água.");
+            }
+            else
+            {   
+                gbuffersMaxRenderDistance = 1000f;
+                Debug.LogWarning("Evento detectado: Jogador saiu da água.");
+            }
+            depthMaterial.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
+            normalMaterial.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
+            albedoMaterial.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
+            specularMaterial.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
         }
 
         void OnGUI()
@@ -197,7 +239,8 @@ namespace GBufferCapture {
                         Logger.LogDebug("No camera selected");
                         return;
                     }
-                    //save as RT to captureFolder
+                    //save RT's to captureFolder
+                    //não é prioridade
                 }
             }
         }
