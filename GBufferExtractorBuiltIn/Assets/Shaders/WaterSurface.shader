@@ -5,11 +5,6 @@ Shader "Hidden/WaterGBufferWriter"
         _WaterDisplacementMap("Displacement", 2D) = "black" {}
         _NormalsTex("Normals", 2D) = "bump" {}
         _WaterPatchLength("Patch Length", Float) = 256
-
-        _ReflectionColor ("Reflection Color", Color) = (1,1,1,1)
-        _RefractionColor ("Refraction Color", Color) = (1,1,1,1)
-        _SkyMap ("Skybox Cubemap", Cube) = "_Skybox" {}
-        _Refraction0 ("Fresnel Base", Range(0,1)) = 0.02
     }
     SubShader
     {

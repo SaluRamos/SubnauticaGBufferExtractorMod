@@ -11,10 +11,10 @@ public class BuildShaderAssetBundle
 
         buildMap[0].assetBundleName = "bundle";
         buildMap[0].assetNames = new string[] {
-            "Assets/Shaders/Post/DepthPost.shader",
-            "Assets/Shaders/Post/NormalPost.shader",
-            "Assets/Shaders/Post/WaterSurface.shader",
-            "Assets/Shaders/WaterSurface/UpdateNormals.shader", //usado no WaterSurface via WaterSurfaceBeforeGBufferOnCamera.cs
+            "Assets/Shaders/DepthPost.shader",
+            "Assets/Shaders/NormalPost.shader",
+            "Assets/Shaders/WaterSurface.shader",
+            "Assets/Shaders/Triplanar.shader"
         };
 
         BuildPipeline.BuildAssetBundles(GBufferExtractor.assetBundleFolderPath, buildMap, BuildAssetBundleOptions.None, BuildTarget.StandaloneWindows64);

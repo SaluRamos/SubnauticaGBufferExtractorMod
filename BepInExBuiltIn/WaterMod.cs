@@ -86,16 +86,15 @@ namespace WaterMod
         [HarmonyPatch(typeof(HeightFieldMesh), "FinalizeRender")]
         [HarmonyPrefix]
         // Agora não precisamos mais retornar um bool, pois não vamos pular o original
-        public static void FillGBufferWithWater_Prefix(HeightFieldMesh __instance)
+        public static void FinalizeRender_Prefix(HeightFieldMesh __instance)
         {
-            // Se nosso sistema não estiver pronto, não fazemos nada.
-            if (waterPrePassCB == null || patchMeshField == null) return;
+            if (waterPrePassCB == null || patchMeshField == null)
+            {
+                return;
+            }
 
-            // 1. Força a conclusão do Job
             JobHandle jobHandle = (JobHandle)jobHandleField.GetValue(__instance);
             jobHandle.Complete();
-
-            // 2. Limpa nosso CommandBuffer
             waterPrePassCB.Clear();
 
             // 3. Pega os dados
@@ -104,7 +103,7 @@ namespace WaterMod
 
             if (waterPatchMesh == null || !waterMatricesQueue.IsCreated || waterMatricesQueue.Count == 0)
             {
-                return; // Não há nada para desenhar neste frame
+                return;
             }
 
             WaterSurface waterSurface = WaterSurface.Get();
@@ -113,25 +112,18 @@ namespace WaterMod
             var choppyScale = (float)AccessTools.Field(displacementGenerator.GetType(), "choppyScale").GetValue(displacementGenerator);
             var waterLevel = waterSurface.transform.position.y + waterSurface.waterOffset;
 
-            // 4. Configura nosso material G-Buffer (o mesmo de antes)
             waterGBufferMaterial.SetTexture("_WaterDisplacementMap", waterSurface.GetDisplacementTexture());
             waterGBufferMaterial.SetTexture("_NormalsTex", normalsTex);
             waterGBufferMaterial.SetFloat("_WaterPatchLength", waterSurface.GetPatchLength());
 
-            // 5. Preenche nosso CommandBuffer com os comandos de desenho
             NativeArray<float4x4> matricesNativeArray = waterMatricesQueue.ToArray(Allocator.Temp);
             for (int i = 0; i < matricesNativeArray.Length; i++)
             {
-                // Usamos a malha e a matriz do jogo, MAS o NOSSO material G-Buffer
                 waterPrePassCB.DrawMesh(waterPatchMesh, (Matrix4x4)matricesNativeArray[i], waterGBufferMaterial, 0, 0);
             }
             matricesNativeArray.Dispose();
 
-            // 6. NÃO retornamos false. O método original vai rodar normalmente,
-            // desenhando a água visualmente. O Z-buffer que nosso passe escreveu
-            // vai garantir que a água visual seja desenhada corretamente sobre
-            // os objetos que estão embaixo dela, e que objetos na frente dela
-            // sejam desenhados corretamente.
+            return;
         }
     }
 

@@ -1,9 +1,9 @@
 ManifestFileVersion: 0
-CRC: 2725737541
+CRC: 952616290
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: 0ee7b8931c2cdd1b5779328709c91af3
+    Hash: 519f728abd56631cf9b51dc45cd8cb8f
   TypeTreeHash:
     serializedVersion: 2
     Hash: 55d48f4ad9c3b13330b9eb5ee5686477
@@ -13,8 +13,8 @@ ClassTypes:
   Script: {instanceID: 0}
 SerializeReferenceClassIdentifiers: []
 Assets:
-- Assets/Shaders/Post/WaterSurface.shader
-- Assets/Shaders/Post/NormalPost.shader
-- Assets/Shaders/WaterSurface/UpdateNormals.shader
-- Assets/Shaders/Post/DepthPost.shader
+- Assets/Shaders/WaterSurface.shader
+- Assets/Shaders/Triplanar.shader
+- Assets/Shaders/NormalPost.shader
+- Assets/Shaders/DepthPost.shader
 Dependencies: []
