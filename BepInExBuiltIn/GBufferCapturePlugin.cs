@@ -76,90 +76,44 @@ namespace GBufferCapture {
 
         private float gbuffersMaxRenderDistance = 130f;
 
-        private CommandBuffer depthCB;
+        private CommandBuffer cb;
         private RenderTexture depthRT;
-        private Shader depthShader;
-        private Material depthMaterial;
+        private RenderTexture normalRT;
+        private RenderTexture albedoRT;
+        private RenderTexture specularRT;
+        private Shader texControlDepthShader;
+        private Material mcdMaterial; //monocromatic control depth
+        private Shader monocromaticControlDepthShader;
+        private Material tcdMaterial; //tex control depth
 
-        private void SetupDepth()
+        private void SetupCB()
         {
             depthRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
             depthRT.Create();
-
-            depthShader = LoadExternalShader(assetBundlePath, "DepthPost");
-            depthMaterial = new Material(depthShader);
-            depthMaterial.hideFlags = HideFlags.HideAndDontSave;
-            depthMaterial.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
-
-            mainCam.depthTextureMode = DepthTextureMode.Depth;
-
-            depthCB = new CommandBuffer();
-            depthCB.name = "Capture Depth";
-            depthCB.Blit(BuiltinRenderTextureType.CameraTarget, depthRT, depthMaterial);
-            mainCam.AddCommandBuffer(CameraEvent.AfterEverything, depthCB);
-        }
-
-        private CommandBuffer normalCB;
-        private RenderTexture normalRT;
-        private Shader normalShader;
-        private Material normalMaterial;
-
-        private void SetupNormal()
-        {
             normalRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
             normalRT.Create();
-
-            normalShader = LoadExternalShader(assetBundlePath, "NormalPost");
-            normalMaterial = new Material(normalShader);
-            normalMaterial.hideFlags = HideFlags.HideAndDontSave;
-            normalMaterial.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
-
-            normalCB = new CommandBuffer();
-            normalCB.name = "Capture Normal";
-            normalCB.Blit(BuiltinRenderTextureType.GBuffer2, normalRT, normalMaterial);
-            mainCam.AddCommandBuffer(CameraEvent.AfterEverything, normalCB);
-        }
-
-        private CommandBuffer albedoCB;
-        private RenderTexture albedoRT;
-        private Shader albedoShader;
-        private Material albedoMaterial;
-
-        private void SetupAlbedo()
-        {
             albedoRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
             albedoRT.Create();
-
-            albedoShader = LoadExternalShader(assetBundlePath, "NormalPost");
-            albedoMaterial = new Material(albedoShader);
-            albedoMaterial.hideFlags = HideFlags.HideAndDontSave;
-            albedoMaterial.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
-
-            albedoCB = new CommandBuffer();
-            albedoCB.name = "Capture Albedo";
-            albedoCB.Blit(BuiltinRenderTextureType.GBuffer0, albedoRT, albedoMaterial);
-            mainCam.AddCommandBuffer(CameraEvent.AfterEverything, albedoCB);
-        }
-
-        private CommandBuffer specularCB;
-        private RenderTexture specularRT;
-        private Shader specularShader;
-        private Material specularMaterial;
-
-        private void SetupSpecular()
-        {
             specularRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
             specularRT.Create();
 
-            specularShader = LoadExternalShader(assetBundlePath, "NormalPost");
-            specularMaterial = new Material(specularShader);
-            specularMaterial.hideFlags = HideFlags.HideAndDontSave;
-            specularMaterial.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
+            monocromaticControlDepthShader = LoadExternalShader(assetBundlePath, "DepthPost");
+            mcdMaterial = new Material(monocromaticControlDepthShader);
+            mcdMaterial.hideFlags = HideFlags.HideAndDontSave;
 
-            specularCB = new CommandBuffer();
-            specularCB.name = "Capture Specular";
-            specularCB.Blit(BuiltinRenderTextureType.GBuffer1, specularRT, specularMaterial);
-            mainCam.AddCommandBuffer(CameraEvent.AfterEverything, specularCB);
+            texControlDepthShader = LoadExternalShader(assetBundlePath, "NormalPost");
+            tcdMaterial = new Material(texControlDepthShader);
+            tcdMaterial.hideFlags = HideFlags.HideAndDontSave;
+
+            mainCam.depthTextureMode = DepthTextureMode.Depth;
+
+            cb = new CommandBuffer();
+            cb.name = "GBuffer Capture Command Buffer";
+            cb.Blit(BuiltinRenderTextureType.CameraTarget, depthRT, mcdMaterial);
+            cb.Blit(BuiltinRenderTextureType.GBuffer2, normalRT, tcdMaterial);
+            cb.Blit(BuiltinRenderTextureType.GBuffer0, albedoRT, tcdMaterial);
+            cb.Blit(BuiltinRenderTextureType.GBuffer1, specularRT, tcdMaterial);
+            mainCam.AddCommandBuffer(CameraEvent.AfterEverything, cb);
         }
 
         private WaterGBufferInjector injectorInstance;
@@ -174,20 +128,11 @@ namespace GBufferCapture {
 
         void OnGUI()
         {
-            if (depthCB != null)
+            if (cb != null)
             {
                 GUI.DrawTexture(new Rect(0, 0, 256, 256), depthRT, ScaleMode.ScaleToFit, false);
-            }
-            if (normalCB != null)
-            {
                 GUI.DrawTexture(new Rect(256, 0, 256, 256), normalRT, ScaleMode.ScaleToFit, false);
-            }
-            if (albedoCB != null)
-            {
                 GUI.DrawTexture(new Rect(512, 0, 256, 256), albedoRT, ScaleMode.ScaleToFit, false);
-            }
-            if (specularCB != null)
-            {
                 GUI.DrawTexture(new Rect(768, 0, 256, 256), specularRT, ScaleMode.ScaleToFit, false);
             }
         }
@@ -197,30 +142,15 @@ namespace GBufferCapture {
             if (Input.GetKeyDown(KeyCode.F11))
             {
                 mainCam = FindObjectOfType<WaterSurfaceOnCamera>()?.gameObject.GetComponent<Camera>();
-                SetupDepth();
-                SetupNormal();
-                SetupAlbedo();
-                SetupSpecular();
+                SetupCB();
                 SetupWaterSurfaceOnGBuffers();
             }
 
-            if (depthCB != null)
+            if (cb != null)
             {
-                depthCB.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
-                depthCB.SetGlobalMatrix("CameraToWorld", mainCam.cameraToWorldMatrix);
-                depthCB.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistance);
-
-                normalCB.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
-                normalCB.SetGlobalMatrix("CameraToWorld", mainCam.cameraToWorldMatrix);
-                normalCB.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistance);
-
-                specularCB.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
-                specularCB.SetGlobalMatrix("CameraToWorld", mainCam.cameraToWorldMatrix);
-                specularCB.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistance);
-
-                albedoCB.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
-                albedoCB.SetGlobalMatrix("CameraToWorld", mainCam.cameraToWorldMatrix);
-                albedoCB.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistance);
+                cb.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
+                cb.SetGlobalMatrix("CameraToWorld", mainCam.cameraToWorldMatrix);
+                cb.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistance);
             }
 
             if (Input.GetKeyDown(KeyCode.F10))
