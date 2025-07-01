@@ -11,7 +11,7 @@ namespace GBufferCapture
 {
 
     [HarmonyPatch(typeof(Creature), nameof(Creature.Start))]
-    public static class Creature_Start_GbufferFix_Patch
+    public static class JellyRayToGBuffer_Patch
     {
         [HarmonyPostfix]
         public static void Postfix(Creature __instance)
@@ -30,10 +30,9 @@ namespace GBufferCapture
             SkinnedMeshRenderer renderer = jellyrayInstance.GetComponentInChildren<SkinnedMeshRenderer>(true);
             if (renderer == null)
             {
-                Debug.LogError("ERRO CRÍTICO: Não foi possível encontrar o SkinnedMeshRenderer em NENHUM filho da JellyRay! O patch não funcionará.");
+                Debug.LogError("ERRO CRÍTICO: Não foi possível encontrar o SkinnedMeshRenderer da JellyRay! O patch não funcionará.");
                 yield break;
             }
-            Debug.Log("SkinnedMeshRenderer encontrado");
             foreach (var mat in renderer.materials)
             {
                 if (mat != null && mat.shader.name == "MarmosetUBER")

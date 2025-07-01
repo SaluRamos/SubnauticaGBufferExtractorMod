@@ -1,12 +1,10 @@
 Shader "Hidden/DepthPost"
 {
-    Properties
-    {
-        _MainTex ("Texture", 2D) = "white" {}
-    }
     SubShader
     {
-        Cull Off ZWrite Off ZTest Always
+        Cull Off 
+        ZWrite Off 
+        ZTest Always
 
         Pass
         {
@@ -17,6 +15,11 @@ Shader "Hidden/DepthPost"
             #include "UnityCG.cginc"
 
             sampler2D _CameraDepthTexture;
+            sampler2D _MainTex;
+
+            float4x4 _CameraProj;
+            float4x4 CameraToWorld;
+            float _DepthCutoff;
             
             struct appdata
             {
@@ -38,14 +41,40 @@ Shader "Hidden/DepthPost"
                 return o;
             }
 
-            float _DepthCutoff;
-
             fixed4 frag (v2f i) : SV_Target
             {
-                float rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
-                float worldDepth = LinearEyeDepth(rawDepth);
-                float clippedDepth = saturate(worldDepth / _DepthCutoff);
-                return fixed4(clippedDepth, clippedDepth, clippedDepth, 1.0);
+                float rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv); //0 a 1
+                float worldDepth = LinearEyeDepth(rawDepth); //converte para distancia real de mundo
+                rawDepth = 1 - rawDepth;
+
+                const float2 p11_22 = float2(_CameraProj._11, _CameraProj._22);
+                const float2 p13_31 = float2(_CameraProj._13, _CameraProj._23);
+                const float isOrtho = 0.0;
+                const float near = _ProjectionParams.y;
+                const float far = _ProjectionParams.z;
+
+                float zOrtho = lerp(near, far, rawDepth);
+                float zPers = near * far / lerp(far, near, rawDepth);
+                float vz = lerp(zPers, zOrtho, isOrtho);
+
+                float3 vpos = float3((i.uv * 2 - 1 - p13_31) / p11_22 * lerp(vz, 1, isOrtho), -vz);
+                float4 wpos = mul(CameraToWorld, float4(vpos, 1));
+
+                // half4 source = tex2D(_MainTex, i.uv);
+                // half3 color = pow(abs(cos(wpos.xyz * 3.14159265358 * 4)), 20);
+                // return half4(lerp(source.rgb, color, 1.0f), source.a);
+                // return fixed4(wpos * 0.1);
+
+                if (wpos.y > 0.1)
+                {
+                    float clippedDepth = saturate(worldDepth / 1000.0); //saturate restringe de 0 a 1
+                    return fixed4(clippedDepth, clippedDepth, clippedDepth, 1.0);
+                }
+                else
+                {
+                    float clippedDepth = saturate(worldDepth / _DepthCutoff);
+                    return fixed4(clippedDepth, clippedDepth, clippedDepth, 1.0);
+                }
             }
             ENDCG
         }

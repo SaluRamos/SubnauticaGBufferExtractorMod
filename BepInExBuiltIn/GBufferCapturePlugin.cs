@@ -137,7 +137,7 @@ namespace GBufferCapture {
 
             albedoCB = new CommandBuffer();
             albedoCB.name = "Capture Albedo";
-            albedoCB.Blit(BuiltinRenderTextureType.GBuffer0, albedoRT);
+            albedoCB.Blit(BuiltinRenderTextureType.GBuffer0, albedoRT, albedoMaterial);
             mainCam.AddCommandBuffer(CameraEvent.AfterEverything, albedoCB);
         }
 
@@ -158,7 +158,7 @@ namespace GBufferCapture {
 
             specularCB = new CommandBuffer();
             specularCB.name = "Capture Specular";
-            specularCB.Blit(BuiltinRenderTextureType.GBuffer1, specularRT);
+            specularCB.Blit(BuiltinRenderTextureType.GBuffer1, specularRT, specularMaterial);
             mainCam.AddCommandBuffer(CameraEvent.AfterEverything, specularCB);
         }
 
@@ -170,24 +170,6 @@ namespace GBufferCapture {
                 return;
             }
             injectorInstance = mainCam.gameObject.AddComponent<WaterGBufferInjector>();
-        }
-
-        public void UpdateMapsRenderDistance(bool underwater)
-        {
-            if (underwater)
-            {
-                gbuffersMaxRenderDistance = 130f;
-                Debug.LogWarning("Evento detectado: Jogador entrou na água.");
-            }
-            else
-            {   
-                gbuffersMaxRenderDistance = 1000f;
-                Debug.LogWarning("Evento detectado: Jogador saiu da água.");
-            }
-            depthMaterial.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
-            normalMaterial.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
-            albedoMaterial.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
-            specularMaterial.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
         }
 
         void OnGUI()
@@ -220,6 +202,25 @@ namespace GBufferCapture {
                 SetupAlbedo();
                 SetupSpecular();
                 SetupWaterSurfaceOnGBuffers();
+            }
+
+            if (depthCB != null)
+            {
+                depthCB.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
+                depthCB.SetGlobalMatrix("CameraToWorld", mainCam.cameraToWorldMatrix);
+                depthCB.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistance);
+
+                normalCB.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
+                normalCB.SetGlobalMatrix("CameraToWorld", mainCam.cameraToWorldMatrix);
+                normalCB.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistance);
+
+                specularCB.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
+                specularCB.SetGlobalMatrix("CameraToWorld", mainCam.cameraToWorldMatrix);
+                specularCB.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistance);
+
+                albedoCB.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
+                albedoCB.SetGlobalMatrix("CameraToWorld", mainCam.cameraToWorldMatrix);
+                albedoCB.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistance);
             }
 
             if (Input.GetKeyDown(KeyCode.F10))

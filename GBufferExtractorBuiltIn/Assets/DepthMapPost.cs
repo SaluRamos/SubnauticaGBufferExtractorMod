@@ -1,45 +1,70 @@
 ﻿using UnityEngine;
+using UnityEngine.Rendering;
 
-[ExecuteInEditMode]
-[DefaultExecutionOrder(99999)] 
 public class DepthMapPost : MonoBehaviour
 {
 
+    public static string assetBundleFolderPath = "E:/UnityGBufferExtractorMod/BepInExBuiltIn/Shaders";
+    public static string assetBundlePath = $"{assetBundleFolderPath}/bundle";
+
+    public Texture2D tex;
+
     private Shader shader;
     private Material material;
+    private Camera mainCam;
+
+    private RenderTexture depthRT;
+    private RenderTexture rt;
+    private CommandBuffer cb;
+
+    private float gbuffersMaxRenderDistance = 130.0f;
 
     void Start()
     {
-        shader = LoadExternalShader("E:/UnityGBufferExtractorMod/BepInExBuiltIn/Shaders/bundle", "DepthPost");
-        OnEnable();
-    }
+        mainCam = GetComponent<Camera>();
 
-    void OnEnable()
-    {
-        GetComponent<Camera>().depthTextureMode = DepthTextureMode.Depth;
-        if (shader != null && material == null)
-        {
-            material = new Material(shader);
-            material.hideFlags = HideFlags.HideAndDontSave;
-        }
-    }
+        depthRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.RFloat);
+        depthRT.Create();
 
-    void OnRenderImage(RenderTexture source, RenderTexture destination)
-    {
-        if (shader == null || material == null)
+        rt = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
+        rt.Create();
+
+        shader = LoadExternalShader(assetBundlePath, "DepthPost");
+        if (shader == null)
         {
-            Graphics.Blit(source, destination);
+            Debug.LogError("Shader não definido");
             return;
         }
-        // Ex: depthMaterial.SetFloat("_MaxDepth", 150.0f);
-        Graphics.Blit(source, destination, material);
+        material = new Material(shader);
+        material.SetTexture("_MainTex", tex);
+        material.hideFlags = HideFlags.HideAndDontSave;
+        // material.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
+
+        mainCam.depthTextureMode = DepthTextureMode.Depth;
+
+        cb = new CommandBuffer();
+        cb.name = "Depth to WorldPos";
+        cb.Blit(BuiltinRenderTextureType.CameraTarget, rt, material);
+        cb.Blit(BuiltinRenderTextureType.Depth, depthRT);
+        mainCam.AddCommandBuffer(CameraEvent.AfterEverything, cb);
     }
 
-    void OnDisable()
+    void Update()
     {
-        if (material != null)
+        if (cb != null)
         {
-            DestroyImmediate(material);
+            cb.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
+            cb.SetGlobalMatrix("CameraToWorld", mainCam.cameraToWorldMatrix);
+            cb.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistance);
+        }
+    }
+
+    void OnGUI()
+    {
+        if (rt != null)
+        {
+            GUI.DrawTexture(new Rect(0, 0, 256, 256), rt, ScaleMode.ScaleToFit, false);
+            GUI.DrawTexture(new Rect(256, 0, 256, 256), depthRT, ScaleMode.ScaleToFit, false);
         }
     }
 
