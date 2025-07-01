@@ -26,6 +26,7 @@ Shader "Hidden/DepthPost"
             float4x4 _CameraProj;
             float4x4 CameraToWorld;
             float _DepthCutoff;
+            float _WaterLevel;
 
             struct appdata
             {
@@ -65,7 +66,7 @@ Shader "Hidden/DepthPost"
                 float3 vpos = float3((i.uv * 2 - 1 - p13_31) / p11_22 * lerp(vz, 1, isOrtho), -vz);
                 float4 wpos = mul(CameraToWorld, float4(vpos, 1));
 
-                if (wpos.y > 0.1)
+                if (wpos.y > _WaterLevel)
                 {
                     float depth = LinearEyeDepth(rawDepth);
                     float mask = 1.0 - step(1000.0, depth);

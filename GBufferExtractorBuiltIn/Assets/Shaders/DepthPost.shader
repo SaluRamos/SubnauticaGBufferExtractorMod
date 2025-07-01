@@ -20,6 +20,7 @@ Shader "Hidden/DepthPost"
             float4x4 _CameraProj;
             float4x4 CameraToWorld;
             float _DepthCutoff;
+            float _WaterLevel;
             
             struct appdata
             {
@@ -65,7 +66,7 @@ Shader "Hidden/DepthPost"
                 // return half4(lerp(source.rgb, color, 1.0f), source.a);
                 // return fixed4(wpos * 0.1);
 
-                if (wpos.y > 0.1)
+                if (wpos.y > _WaterLevel)
                 {
                     float clippedDepth = saturate(worldDepth / 1000.0); //saturate restringe de 0 a 1
                     return fixed4(clippedDepth, clippedDepth, clippedDepth, 1.0);

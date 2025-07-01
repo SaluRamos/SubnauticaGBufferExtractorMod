@@ -137,6 +137,8 @@ namespace GBufferCapture {
             }
         }
 
+        private float depthControlWaterLevel = 5f;
+
         void Update()
         {
             if (Input.GetKeyDown(KeyCode.F11))
@@ -151,6 +153,14 @@ namespace GBufferCapture {
                 cb.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
                 cb.SetGlobalMatrix("CameraToWorld", mainCam.cameraToWorldMatrix);
                 cb.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistance);
+                if (UnderWaterListener_Patch.IsUnderWater())
+                {
+                    cb.SetGlobalFloat("_WaterLevel", depthControlWaterLevel);
+                }
+                else
+                {
+                    cb.SetGlobalFloat("_WaterLevel", -depthControlWaterLevel);
+                }
             }
 
             if (Input.GetKeyDown(KeyCode.F10))
