@@ -61,11 +61,6 @@ Shader "Hidden/DepthPost"
                 float3 vpos = float3((i.uv * 2 - 1 - p13_31) / p11_22 * lerp(vz, 1, isOrtho), -vz);
                 float4 wpos = mul(CameraToWorld, float4(vpos, 1));
 
-                // half4 source = tex2D(_MainTex, i.uv);
-                // half3 color = pow(abs(cos(wpos.xyz * 3.14159265358 * 4)), 20);
-                // return half4(lerp(source.rgb, color, 1.0f), source.a);
-                // return fixed4(wpos * 0.1);
-
                 if (wpos.y > _WaterLevel)
                 {
                     float clippedDepth = saturate(worldDepth / 1000.0); //saturate restringe de 0 a 1

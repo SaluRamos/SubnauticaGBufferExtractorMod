@@ -13,7 +13,8 @@ public class BuildShaderAssetBundle
         buildMap[0].assetNames = new string[] {
             "Assets/Shaders/DepthPost.shader",
             "Assets/Shaders/NormalPost.shader",
-            "Assets/Shaders/WaterSurface.shader"
+            "Assets/Shaders/WaterSurface.shader",
+            "Assets/Shaders/ReconstructNormal.shader"
         };
 
         BuildPipeline.BuildAssetBundles(DepthMapPost.assetBundleFolderPath, buildMap, BuildAssetBundleOptions.None, BuildTarget.StandaloneWindows64);

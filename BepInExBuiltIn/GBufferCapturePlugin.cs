@@ -139,18 +139,20 @@ namespace GBufferCapture {
 
         private float depthControlWaterLevel = 5f;
 
-        void Update()
+        void LateUpdate()
         {
-            if (Input.GetKeyDown(KeyCode.F11))
-            {
-                mainCam = FindObjectOfType<WaterSurfaceOnCamera>()?.gameObject.GetComponent<Camera>();
-                SetupCB();
-                SetupWaterSurfaceOnGBuffers();
-            }
-
             if (cb != null)
             {
                 cb.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
+
+                //cb.SetGlobalMatrix("_CameraInvProj", mainCam.projectionMatrix.inverse);
+                //Matrix4x4 worldToCameraMatrix = mainCam.worldToCameraMatrix;
+                //Transform transform = FindObjectOfType<WaterscapeVolume>().waterPlane.transform;
+                //Plane plane = new Plane(transform.up, transform.position);
+                //Plane plane2 = worldToCameraMatrix.TransformPlane(plane);
+                //Vector3 normal = plane2.normal;
+                //cb.SetGlobalVector("_UweVsWaterPlane", new Vector4(normal.x, normal.y, normal.z, plane2.distance));
+
                 cb.SetGlobalMatrix("CameraToWorld", mainCam.cameraToWorldMatrix);
                 cb.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistance);
                 if (UnderWaterListener_Patch.IsUnderWater())
@@ -161,6 +163,16 @@ namespace GBufferCapture {
                 {
                     cb.SetGlobalFloat("_WaterLevel", -depthControlWaterLevel);
                 }
+            }
+        }
+
+        void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.F11))
+            {
+                mainCam = FindObjectOfType<WaterSurfaceOnCamera>()?.gameObject.GetComponent<Camera>();
+                SetupCB();
+                SetupWaterSurfaceOnGBuffers();
             }
 
             if (Input.GetKeyDown(KeyCode.F10))

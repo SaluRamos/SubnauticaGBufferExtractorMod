@@ -18,11 +18,11 @@ the captured gbuffers are:
 You need to modify the Paths in PIPELINE/Assets/GBufferExtractor.cs. 
 You also need to generate the AssetsBundle for the shaders, just execute in the Editor: Build -> Build Shader AssetBundle. 
 
-## Dependencies
+## Utils
 
 Unity 2019.4.36f1: https://unity.com/releases/editor/archive
 
 - https://github.com/BepInEx/BepInEx
 - https://github.com/BepInEx/BepInEx.ConfigurationManager
-- https://github.com/AssetRipper/AssetRipper
+- https://github.com/AssetRipper/AssetRipper (use decompile shader config!)
 - https://github.com/sinai-dev/UnityExplorer
