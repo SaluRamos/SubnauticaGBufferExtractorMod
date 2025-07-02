@@ -1,3 +1,5 @@
+//trying to use waterscapefog.shader concept to define if pixel should have 1000.0f depth range or _DepthCutoff depth range
+
 Shader "Hidden/DepthPost"
 {
     SubShader
