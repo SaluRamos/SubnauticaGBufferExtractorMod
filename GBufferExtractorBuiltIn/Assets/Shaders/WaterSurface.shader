@@ -64,10 +64,7 @@ Shader "Hidden/WaterGBufferWriter"
                 gbuffer_out o;
                 o.rt0 = float4(0.05, 0.1, 0.15, 1.0); // Albedo
                 o.rt1 = float4(0.8, 0.8, 0.8, 0.9); // Specular/Smoothness
-                
-                // Lê as normais usando o mesmo UV. O _NormalsTex do jogo já está no formato correto.
                 o.rt2 = float4(tex2D(_NormalsTex, i.uv_norm).xyz, 1.0);
-                
                 o.rt3 = float4(0, 0, 0, 0); // Emission
                 return o;
             }

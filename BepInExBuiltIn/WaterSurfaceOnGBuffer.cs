@@ -1,19 +1,15 @@
 ﻿using GBufferCapture;
 using HarmonyLib;
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Reflection;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.SceneManagement;
 
 namespace WaterMod
 {
-    // Este componente é adicionado dinamicamente à câmera.
+
     public class WaterGBufferInjector : MonoBehaviour
     {
         private CommandBuffer waterPrePassCB;
@@ -24,22 +20,15 @@ namespace WaterMod
         {
             cam = GetComponent<Camera>();
             Shader gbufferShader = GBufferCapturePlugin.LoadExternalShader(GBufferCapturePlugin.assetBundlePath, "WaterSurface");
-
             if (cam == null || gbufferShader == null)
             {
-                Debug.LogError("[WaterMod] Falha na inicialização do Injetor (Câmera ou Shader nulo).");
                 Destroy(this);
                 return;
             }
-
             waterGBufferMaterial = new Material(gbufferShader);
             waterPrePassCB = new CommandBuffer { name = "Water G-Buffer Pre-Pass" };
             cam.AddCommandBuffer(CameraEvent.BeforeGBuffer, waterPrePassCB);
-
-            // Passa os objetos necessários para o Patcher estático
             WaterSurfacePatcher.Prepare(waterGBufferMaterial, waterPrePassCB);
-
-            Debug.Log("[WaterMod] Injetor e Patcher preparados.");
         }
 
         void OnDestroy()
@@ -85,7 +74,6 @@ namespace WaterMod
 
         [HarmonyPatch(typeof(HeightFieldMesh), "FinalizeRender")]
         [HarmonyPrefix]
-        // Agora não precisamos mais retornar um bool, pois não vamos pular o original
         public static void FinalizeRender_Prefix(HeightFieldMesh __instance)
         {
             if (waterPrePassCB == null || patchMeshField == null)
@@ -97,7 +85,6 @@ namespace WaterMod
             jobHandle.Complete();
             waterPrePassCB.Clear();
 
-            // 3. Pega os dados
             Mesh waterPatchMesh = patchMeshField.GetValue(__instance) as Mesh;
             var waterMatricesQueue = (NativeQueue<float4x4>)matricesQueueField.GetValue(__instance);
 

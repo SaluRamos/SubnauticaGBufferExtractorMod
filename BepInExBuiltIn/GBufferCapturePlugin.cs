@@ -31,6 +31,7 @@ namespace GBufferCapture {
         private float captureInterval = 0.5f; // 500 ms
 
         private Camera mainCam;
+        private Camera gbufferCam;
 
         private const string MyGUID = "com.Salu.GBufferCapture";
         private const string PluginName = "GBufferCapture";
@@ -88,6 +89,19 @@ namespace GBufferCapture {
 
         private void SetupCB()
         {
+            GameObject gbufferCamObj = new GameObject("GBufferCam");
+            gbufferCamObj.transform.SetParent(mainCam.transform.parent);
+            gbufferCamObj.transform.position = mainCam.transform.position;
+            gbufferCamObj.transform.rotation = mainCam.transform.rotation;
+            gbufferCam = gbufferCamObj.AddComponent<Camera>();
+            //int waterGBufferLayer = LayerMask.NameToLayer("WaterGBufferOnly");
+            gbufferCam.CopyFrom(mainCam);
+            //gbufferCam.cullingMask = 1 << waterGBufferLayer;
+            gbufferCam.clearFlags = CameraClearFlags.Nothing;
+            gbufferCam.depth = mainCam.depth - 1;
+            //mainCam.cullingMask &= ~(1 << waterGBufferLayer);
+
+
             depthRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
             depthRT.Create();
             normalRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
@@ -105,7 +119,7 @@ namespace GBufferCapture {
             tcdMaterial = new Material(texControlDepthShader);
             tcdMaterial.hideFlags = HideFlags.HideAndDontSave;
 
-            mainCam.depthTextureMode = DepthTextureMode.Depth;
+            gbufferCam.depthTextureMode = DepthTextureMode.Depth;
 
             cb = new CommandBuffer();
             cb.name = "GBuffer Capture Command Buffer";
@@ -113,7 +127,7 @@ namespace GBufferCapture {
             cb.Blit(BuiltinRenderTextureType.GBuffer2, normalRT, tcdMaterial);
             cb.Blit(BuiltinRenderTextureType.GBuffer0, albedoRT, tcdMaterial);
             cb.Blit(BuiltinRenderTextureType.GBuffer1, specularRT, tcdMaterial);
-            mainCam.AddCommandBuffer(CameraEvent.AfterEverything, cb);
+            gbufferCam.AddCommandBuffer(CameraEvent.AfterEverything, cb);
         }
 
         private WaterGBufferInjector injectorInstance;
@@ -123,7 +137,7 @@ namespace GBufferCapture {
             {
                 return;
             }
-            injectorInstance = mainCam.gameObject.AddComponent<WaterGBufferInjector>();
+            injectorInstance = gbufferCam.gameObject.AddComponent<WaterGBufferInjector>();
         }
 
         void OnGUI()
