@@ -12,9 +12,9 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
-using WaterMod;
 
-namespace GBufferCapture {
+namespace GBufferCapture 
+{
 
     [BepInPlugin(MyGUID, PluginName, VersionString)]
     public class GBufferCapturePlugin : BaseUnityPlugin
@@ -67,7 +67,6 @@ namespace GBufferCapture {
                 Logger.LogInfo("Using SRP: " + GraphicsSettings.renderPipelineAsset.GetType().Name);
             }
         }
-
 
         public static float gbuffersMaxRenderDistance => gbuffersMaxRenderDistanceEntry.Value;
 

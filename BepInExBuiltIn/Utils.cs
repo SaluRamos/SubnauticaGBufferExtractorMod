@@ -10,6 +10,7 @@ namespace GBufferCapture
     internal class Utils
     {
 
+        //usado para inspecionar terrain patches que são terrivelmente desorganizados na cena
         public static void InvestigateCenterObject(Camera mainCam)
         {
             Ray ray = mainCam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));

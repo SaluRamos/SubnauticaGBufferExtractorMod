@@ -1,5 +1,4 @@
-﻿using GBufferCapture;
-using HarmonyLib;
+﻿using HarmonyLib;
 using System.Reflection;
 using Unity.Collections;
 using Unity.Jobs;
@@ -7,7 +6,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace WaterMod
+namespace GBufferCapture
 {
 
     [RequireComponent(typeof(Camera))]

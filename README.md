@@ -24,7 +24,7 @@ then, just press F10 to start/stop recording. The captures are taken every one s
 
 WARNING: In current build, if you get back to game menu, you will need to restart the game for the capture system to work again  
 
-RECOMMENDATION: I recommend you to use dev commands such as "daynightspeed" to increase light diversity in you dataset and "fog" to see further away. SHIFT + ENTER opens command entry.  
+RECOMMENDATION: I recommend you to use dev commands such as "daynightspeed" to increase light diversity in you dataset and "fog" to see further away. SHIFT + ENTER opens command entry. Also, remove game GUI from captures using F6 hotkey.  
 
 ## Dependecies
 
