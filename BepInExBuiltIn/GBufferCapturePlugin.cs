@@ -44,6 +44,7 @@ namespace GBufferCapture
         public static ConfigEntry<string> captureFolderEntry;
         public static ConfigEntry<float> gbuffersMaxRenderDistanceEntry;
         public static ConfigEntry<float> depthControlWaterLevelToleranceEntry;
+        public static ConfigEntry<bool> seeOnGUIEntry;
 
         private void Awake()
         {
@@ -51,6 +52,7 @@ namespace GBufferCapture
             captureThreadSleep = Config.Bind("General", "CaptureThreadSleep", 1.0f, new ConfigDescription("Set time between captures in seconds", new AcceptableValueRange<float>(0.0f, 10.0f)));
             gbuffersMaxRenderDistanceEntry = Config.Bind("General", "GBufferMaxRenderDistanceUnderwater", 120.0f, "Max saw distance by gbuffers underwater, upperwater default is 1000.0f");
             depthControlWaterLevelToleranceEntry = Config.Bind("General", "DepthControlWaterLevelTolerance", 100.0f, "the mod shaders converts depthmap to worldPos and may fail when you move camera too fast (doesnt know why exactly), increase this value to reduce/remove this errors effect in captured images");
+            seeOnGUIEntry = Config.Bind("General", "seeOnGUI", true, "enable/disable mod OnGUI");
             assetBundleFolderPathEntry = Config.Bind("Paths", "AssetBundleFolderPath", "E:/UnityGBufferExtractorMod/BepInExBuiltIn/Shaders", "Path to the folder containing the shaders asset bundle");
             captureFolderEntry = Config.Bind("Paths", "CaptureFolder", "E:/EPE/data/game_gbuffers/bepinex", "Folder where captures will be saved");
 
@@ -101,7 +103,7 @@ namespace GBufferCapture
             gbufferCam.depth = mainCam.depth - 1;
             //mainCam.cullingMask &= ~(1 << waterGBufferLayer);
 
-            mainRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 24, RenderTextureFormat.ARGB32);
+            mainRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGB32);
             mainRT.Create();
             depthRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
             depthRT.Create();
@@ -200,7 +202,7 @@ namespace GBufferCapture
 
         void OnGUI()
         {
-            if (cb != null)
+            if (cb != null && seeOnGUIEntry.Value)
             {
                 GUI.DrawTexture(new Rect(0, 0, 256, 256), depthRT, ScaleMode.ScaleToFit, false);
                 GUI.DrawTexture(new Rect(256, 0, 256, 256), normalRT, ScaleMode.ScaleToFit, false);
@@ -215,7 +217,6 @@ namespace GBufferCapture
         {
             if (cb != null)
             {
-                Graphics.Blit(mainCam.targetTexture, null as RenderTexture);
 
                 //isso seria usado no autodepth shader
                 //cb.SetGlobalMatrix("_CameraInvProj", mainCam.projectionMatrix.inverse);
@@ -237,6 +238,7 @@ namespace GBufferCapture
                 {
                     cb.SetGlobalFloat("_WaterLevel", -depthControlWaterLevel);
                 }
+                Graphics.Blit(mainRT, null as RenderTexture);
             }
         }
 
