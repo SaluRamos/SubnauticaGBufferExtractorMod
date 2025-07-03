@@ -18,9 +18,9 @@ Install by extrating the mod inside "PathToSubnauticaFolder/BepInEx/plugins".
 ConfigurationManager plugin is required for you to configure paths ingame.  
 Inside the game, Press F1 to open manager menu, then configure "CaptureFolder" and "AssetBundlePath".  
 The "assetBundleFolderPath" must be full path to "PathToSubnauticaFolder/BepInEx/plugins/GBufferCapture/Shaders"  
-The "CaptureFolder" is self-explanatory.
-INSIDE A CREATIVE WORLD, press F11 to start mod core. (DO NOT START MOD CORE AT GAME MENU)  
-then, just press F10 to start/stop recoording. The captures are taken every one second by default.  
+The "CaptureFolder" is self-explanatory.  
+INSIDE A CREATIVE WORLD, press F11 to start mod core. DO NOT START MOD CORE AT GAME MENU.  
+then, just press F10 to start/stop recording. The captures are taken every one second by default.  
 
 WARNING: In current build, if you get back to game menu, you will need to restart the game for the capture system to work again  
 
@@ -29,7 +29,7 @@ RECOMMENDATION: I recommend you to use dev commands such as "daynightspeed" to i
 ## Dependecies
 
 - https://github.com/BepInEx/BepInEx  
-- https://github.com/BepInEx/BepInEx.ConfigurationManager (configure ingame capture interval, assetbundlepath, capturefolderpath)  
+- https://github.com/BepInEx/BepInEx.ConfigurationManager (configure ingame variables)  
 
 ## Utils
 
