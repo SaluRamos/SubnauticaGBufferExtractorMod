@@ -96,12 +96,9 @@ namespace GBufferCapture
             gbufferCamObj.transform.position = mainCam.transform.position;
             gbufferCamObj.transform.rotation = mainCam.transform.rotation;
             gbufferCam = gbufferCamObj.AddComponent<Camera>();
-            //int waterGBufferLayer = LayerMask.NameToLayer("WaterGBufferOnly");
             gbufferCam.CopyFrom(mainCam);
-            //gbufferCam.cullingMask = 1 << waterGBufferLayer;
             // gbufferCam.clearFlags = CameraClearFlags.Nothing;
             gbufferCam.depth = mainCam.depth - 1;
-            //mainCam.cullingMask &= ~(1 << waterGBufferLayer);
 
             mainRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGB32);
             mainRT.Create();
@@ -204,10 +201,10 @@ namespace GBufferCapture
         {
             if (cb != null && seeOnGUIEntry.Value)
             {
-                GUI.DrawTexture(new Rect(0, 0, 256, 256), depthRT, ScaleMode.ScaleToFit, false);
-                GUI.DrawTexture(new Rect(256, 0, 256, 256), normalRT, ScaleMode.ScaleToFit, false);
-                GUI.DrawTexture(new Rect(512, 0, 256, 256), albedoRT, ScaleMode.ScaleToFit, false);
-                GUI.DrawTexture(new Rect(768, 0, 256, 256), mainRT, ScaleMode.ScaleToFit, false);
+                GUI.DrawTexture(new Rect(0, 0, 256, 144), depthRT, ScaleMode.StretchToFill, false);
+                GUI.DrawTexture(new Rect(0, 144, 256, 144), normalRT, ScaleMode.StretchToFill, false);
+                GUI.DrawTexture(new Rect(0, 288, 256, 144), albedoRT, ScaleMode.StretchToFill, false);
+                GUI.DrawTexture(new Rect(0, 432, 256, 144), mainRT, ScaleMode.StretchToFill, false);
             }
         }
 
