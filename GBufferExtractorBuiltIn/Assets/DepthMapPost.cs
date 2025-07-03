@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 public class DepthMapPost : MonoBehaviour
 {
 
-    public static string assetBundleFolderPath = "E:/UnityGBufferExtractorMod/BepInExBuiltIn/Shaders";
+    public static string assetBundleFolderPath = "G:/Steam/steamapps/common/Subnautica/BepInEx/plugins/GBufferCapture/Shaders";
     public static string assetBundlePath = $"{assetBundleFolderPath}/bundle";
 
     public Texture2D tex;
