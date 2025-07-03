@@ -22,9 +22,9 @@ namespace GBufferCapture {
 
         public static GBufferCapturePlugin instance { get; private set; }
 
-        public static string assetBundleFolderPath = "E:/UnityGBufferExtractorMod/BepInExBuiltIn/Shaders";
+        public static string assetBundleFolderPath = "E:/UnityGBufferExtractorMod/BepInExBuiltIn/Shaders"; //path to shaders asset bundle
         public static string assetBundlePath = $"{assetBundleFolderPath}/bundle";
-        public string captureFolder = "E:/EPE/data/game_gbuffers/bepinex"; //local onde as imagens serão salvas
+        public string captureFolder = "E:/EPE/data/game_gbuffers/bepinex"; //local which captures are saved
 
         private bool isCapturing = false;
         private float timer = 0f;
@@ -75,17 +75,24 @@ namespace GBufferCapture {
             }
         }
 
-        private float gbuffersMaxRenderDistance = 130f;
+        private float gbuffersMaxRenderDistance = 120f;
 
         private CommandBuffer cb;
+        private RenderTexture mainRT;
         private RenderTexture depthRT;
         private RenderTexture normalRT;
         private RenderTexture albedoRT;
-        private RenderTexture specularRT;
+        private RenderTexture emissionRT;
+        private RenderTexture idRT;
+
+        private Shader midShader;
+        private Material midMaterial;
         private Shader texControlDepthShader;
         private Material mcdMaterial; //monocromatic control depth
         private Shader monocromaticControlDepthShader;
         private Material tcdMaterial; //tex control depth
+        private Shader emissionShader;
+        private Material emissionMat;
 
         private void SetupCB()
         {
@@ -101,15 +108,18 @@ namespace GBufferCapture {
             gbufferCam.depth = mainCam.depth - 1;
             //mainCam.cullingMask &= ~(1 << waterGBufferLayer);
 
-
+            mainRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 24, RenderTextureFormat.ARGB32);
+            mainRT.Create();
             depthRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
             depthRT.Create();
             normalRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
             normalRT.Create();
             albedoRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
             albedoRT.Create();
-            specularRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
-            specularRT.Create();
+            emissionRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGB32);
+            emissionRT.Create();
+            idRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGB32);
+            idRT.Create();
 
             monocromaticControlDepthShader = LoadExternalShader(assetBundlePath, "DepthPost");
             mcdMaterial = new Material(monocromaticControlDepthShader);
@@ -119,15 +129,69 @@ namespace GBufferCapture {
             tcdMaterial = new Material(texControlDepthShader);
             tcdMaterial.hideFlags = HideFlags.HideAndDontSave;
 
+            emissionShader = LoadExternalShader(assetBundlePath, "EmissionMap");
+            emissionMat = new Material(emissionShader);
+            emissionMat.hideFlags = HideFlags.HideAndDontSave;
+
+            midShader = LoadExternalShader(assetBundlePath, "MaterialID");
+            midMaterial = new Material(midShader);
+            midMaterial.hideFlags = HideFlags.HideAndDontSave;
+
             gbufferCam.depthTextureMode = DepthTextureMode.Depth;
 
             cb = new CommandBuffer();
             cb.name = "GBuffer Capture Command Buffer";
+
+            //código base para shaderID e emissionMap
+            //var renderers = FindObjectsOfType<Renderer>();
+
+            //cb.SetRenderTarget(idRT);
+            //cb.ClearRenderTarget(true, true, Color.black);
+            //var props = new MaterialPropertyBlock();
+            //foreach (var rend in renderers)
+            //{
+            //    if (rend.sharedMaterial == null)
+            //    { 
+            //        Debug.Log($"pulando renderer {rend}");
+            //        continue;
+            //    }
+            //    if (rend is ParticleSystemRenderer)
+            //    { 
+            //        continue;
+            //    }
+            //    props.Clear();
+            //    int matID = rend.sharedMaterial.GetInstanceID();
+            //    props.SetFloat("_MaterialID", matID);
+            //    rend.SetPropertyBlock(props);
+            //    cb.DrawRenderer(rend, midMaterial);
+            //}
+
+            //cb.SetRenderTarget(emissionRT);
+            //cb.ClearRenderTarget(true, true, Color.black);
+            //foreach (var rend in renderers)
+            //{
+                // uma das idéias para capturar o emissionMap é obter todos os gameObjects que contem Light e iterar sobre objetos parentes com mesh, pois estes serão a fonte de luz, a esses objetos se aplica o material
+            //    if (rend.sharedMaterial == null)
+            //    {
+            //        Debug.Log($"pulando renderer {rend}");
+            //        continue;
+            //    }
+            //    if (rend is ParticleSystemRenderer)
+            //    {
+            //        continue;
+            //    }
+            //    var mat = rend.sharedMaterial;
+            //    if (!mat.HasProperty("_EmissionMap"))
+            //    { 
+            //        cb.DrawRenderer(rend, emissionMat);
+            //    }
+            //}
+
             cb.Blit(BuiltinRenderTextureType.CameraTarget, depthRT, mcdMaterial);
             cb.Blit(BuiltinRenderTextureType.GBuffer2, normalRT, tcdMaterial);
             cb.Blit(BuiltinRenderTextureType.GBuffer0, albedoRT, tcdMaterial);
-            cb.Blit(BuiltinRenderTextureType.GBuffer1, specularRT, tcdMaterial);
             gbufferCam.AddCommandBuffer(CameraEvent.AfterEverything, cb);
+            mainCam.targetTexture = mainRT;
         }
 
         private WaterGBufferInjector injectorInstance;
@@ -147,16 +211,19 @@ namespace GBufferCapture {
                 GUI.DrawTexture(new Rect(0, 0, 256, 256), depthRT, ScaleMode.ScaleToFit, false);
                 GUI.DrawTexture(new Rect(256, 0, 256, 256), normalRT, ScaleMode.ScaleToFit, false);
                 GUI.DrawTexture(new Rect(512, 0, 256, 256), albedoRT, ScaleMode.ScaleToFit, false);
-                GUI.DrawTexture(new Rect(768, 0, 256, 256), specularRT, ScaleMode.ScaleToFit, false);
+                GUI.DrawTexture(new Rect(768, 0, 256, 256), mainRT, ScaleMode.ScaleToFit, false);
+                //GUI.DrawTexture(new Rect(768, 0, 256, 256), emissionRT, ScaleMode.ScaleToFit, false);
+                //GUI.DrawTexture(new Rect(1024, 0, 256, 256), idRT, ScaleMode.ScaleToFit, false);
             }
         }
 
-        private float depthControlWaterLevel = 5f;
+        private float depthControlWaterLevel = 100f;
 
         void LateUpdate()
         {
             if (cb != null)
             {
+                Graphics.Blit(mainCam.targetTexture, null as RenderTexture);
                 cb.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
 
                 //cb.SetGlobalMatrix("_CameraInvProj", mainCam.projectionMatrix.inverse);
@@ -195,7 +262,7 @@ namespace GBufferCapture {
                 Debug.Log($"Captura de G-Buffer {(isCapturing ? "iniciada" : "parada")}");
             }
 
-            if (isCapturing)
+            if (isCapturing && cb != null)
             {
                 timer += Time.deltaTime;
                 if (timer >= captureInterval)
@@ -206,8 +273,11 @@ namespace GBufferCapture {
                         Logger.LogDebug("No camera selected");
                         return;
                     }
-                    //save RT's to captureFolder
-                    //não é prioridade
+                    string timestamp = $"{System.DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}";
+                    SaveJPG($"{timestamp}_base.png", mainCam, mainRT);
+                    SaveJPG($"{timestamp}_depth.png", mainCam, depthRT);
+                    SaveJPG($"{timestamp}_normal.png", mainCam, normalRT);
+                    SaveJPG($"{timestamp}_albedo.png", mainCam, albedoRT);
                 }
             }
         }
@@ -239,13 +309,12 @@ namespace GBufferCapture {
             return loadedShader;
         }
 
-        private void SaveJPG(string fileName, Camera cam, RenderTexture rtFull, RenderTexture camTargetTex)
+        private void SaveJPG(string fileName, Camera cam, RenderTexture rtFull)
         {
             string fullPath = Path.Combine(captureFolder, fileName);
             int newWidth = cam.pixelWidth / 2;
             int newHeight = cam.pixelHeight / 2;
             RenderTexture rtHalf = RenderTexture.GetTemporary(newWidth, newHeight, 0);
-            RenderTexture prevActiveRT = RenderTexture.active;
             Graphics.Blit(rtFull, rtHalf);
             Texture2D screenShot = new Texture2D(newWidth, newHeight, TextureFormat.RGB24, false);
             RenderTexture.active = rtHalf;
@@ -260,11 +329,7 @@ namespace GBufferCapture {
             {
                 Debug.LogError($"Erro ao salvar o arquivo: {ex.Message}");
             }
-            // Limpeza
             Destroy(screenShot);
-            cam.targetTexture = camTargetTex;
-            RenderTexture.active = prevActiveRT;
-            RenderTexture.ReleaseTemporary(rtFull);
             RenderTexture.ReleaseTemporary(rtHalf);
         }
 

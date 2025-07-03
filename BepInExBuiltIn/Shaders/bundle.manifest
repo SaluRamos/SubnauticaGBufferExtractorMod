@@ -1,9 +1,9 @@
 ManifestFileVersion: 0
-CRC: 953396836
+CRC: 670457114
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: 0a70fb32ce858eb143cc59eb7fd298db
+    Hash: e249ffef0048ea0c3ddd11d1f2fcff32
   TypeTreeHash:
     serializedVersion: 2
     Hash: 55d48f4ad9c3b13330b9eb5ee5686477
@@ -15,5 +15,7 @@ SerializeReferenceClassIdentifiers: []
 Assets:
 - Assets/Shaders/WaterSurface.shader
 - Assets/Shaders/NormalPost.shader
+- Assets/Shaders/MaterialID.shader
 - Assets/Shaders/DepthPost.shader
+- Assets/Shaders/EmissionMap.shader
 Dependencies: []

@@ -10,6 +10,7 @@ using UnityEngine.Rendering;
 namespace WaterMod
 {
 
+    [RequireComponent(typeof(Camera))]
     public class WaterGBufferInjector : MonoBehaviour
     {
         private CommandBuffer waterPrePassCB;
