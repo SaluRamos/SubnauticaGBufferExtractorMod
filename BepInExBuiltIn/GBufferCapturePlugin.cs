@@ -12,6 +12,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
+using static RadicalLibrary.Spline;
 
 namespace GBufferCapture 
 {
@@ -22,9 +23,8 @@ namespace GBufferCapture
 
         public static GBufferCapturePlugin instance { get; private set; }
 
-        public static string assetBundleFolderPath => assetBundleFolderPathEntry.Value; //path to shaders asset bundle
-        public static string assetBundlePath => assetBundleFolderPathEntry != null ? $"{assetBundleFolderPath}/bundle" : null;
-        public static string captureFolder => captureFolderEntry.Value; //local which captures are saved
+        public static string assetBundlePath = Paths.PluginPath + "\\GBufferCapture\\Shaders\\bundle";
+        public static string captureFolder = Paths.PluginPath + "\\GBufferCapture\\captures";
 
         private bool isCapturing = false;
         private float timer = 0f;
@@ -40,8 +40,6 @@ namespace GBufferCapture
         public static ManualLogSource Log = new ManualLogSource(PluginName);
 
         public static ConfigEntry<float> captureThreadSleep;
-        public static ConfigEntry<string> assetBundleFolderPathEntry;
-        public static ConfigEntry<string> captureFolderEntry;
         public static ConfigEntry<float> gbuffersMaxRenderDistanceEntry;
         public static ConfigEntry<float> depthControlWaterLevelToleranceEntry;
         public static ConfigEntry<bool> seeOnGUIEntry;
@@ -50,15 +48,13 @@ namespace GBufferCapture
         private void Awake()
         {
             instance = this;
+            Directory.CreateDirectory(captureFolder);
             captureThreadSleep = Config.Bind("General", "CaptureThreadSleep", 1.0f, new ConfigDescription("Set time between captures in seconds", new AcceptableValueRange<float>(0.0f, 10.0f)));
             gbuffersMaxRenderDistanceEntry = Config.Bind("General", "GBufferMaxRenderDistanceUnderwater", 120.0f, "Max saw distance by gbuffers underwater, upperwater default is 1000.0f");
             depthControlWaterLevelToleranceEntry = Config.Bind("General", "DepthControlWaterLevelTolerance", 100.0f, "the mod shaders converts depthmap to worldPos and may fail when you move camera too fast (doesnt know why exactly), increase this value to reduce/remove this errors effect in captured images");
             seeOnGUIEntry = Config.Bind("General", "seeOnGUI", true, "enable/disable mod OnGUI");
             fogEntry = Config.Bind("General", "Fog", true, "enable/disable fog without affecting captures");
             lastFog = !fogEntry.Value;
-
-            assetBundleFolderPathEntry = Config.Bind("Paths", "AssetBundleFolderPath", "E:/UnityGBufferExtractorMod/BepInExBuiltIn/Shaders", "Path to the folder containing the shaders asset bundle");
-            captureFolderEntry = Config.Bind("Paths", "CaptureFolder", "E:/EPE/data/game_gbuffers/bepinex", "Folder where captures will be saved");
 
             Logger.LogInfo($"PluginName: {PluginName}, VersionString: {VersionString} is loading...");
             harmony.PatchAll();
@@ -256,6 +252,11 @@ namespace GBufferCapture
                 SetupWaterSurfaceOnGBuffers();
             }
 
+            if (Input.GetKeyDown(KeyCode.Alpha0))
+            {
+                Utils.DumpShaders();
+            }
+
             if (lastFog != fogEntry.Value && cb != null) 
             {
                 if (!fogEntry.Value)
@@ -325,7 +326,7 @@ namespace GBufferCapture
 
         private void SaveJPG(string fileName, Camera cam, RenderTexture rtFull)
         {
-            string fullPath = Path.Combine(captureFolder, fileName);
+            string fullPath = System.IO.Path.Combine(captureFolder, fileName);
             int newWidth = cam.pixelWidth / 2;
             int newHeight = cam.pixelHeight / 2;
             RenderTexture rtHalf = RenderTexture.GetTemporary(newWidth, newHeight, 0);

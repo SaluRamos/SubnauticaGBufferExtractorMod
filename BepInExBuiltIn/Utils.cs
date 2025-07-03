@@ -11,8 +11,9 @@ namespace GBufferCapture
     {
 
         //usado para inspecionar terrain patches que são terrivelmente desorganizados na cena
-        public static void InvestigateCenterObject(Camera mainCam)
+        public static void InvestigateCenterObject()
         {
+            Camera mainCam = UnityEngine.Object.FindObjectOfType<WaterSurfaceOnCamera>()?.gameObject.GetComponent<Camera>();
             Ray ray = mainCam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
             RaycastHit hit;
             if (Physics.Raycast(ray, out hit, 1000f))
@@ -86,6 +87,17 @@ namespace GBufferCapture
             else
             {
                 Debug.Log("[Investigator] Raycast não atingiu nada.");
+            }
+        }
+
+        public static void DumpShaders()
+        {
+            foreach (var mat in Resources.FindObjectsOfTypeAll<Material>())
+            {
+                if (mat.shader != null)
+                {
+                    Debug.LogWarning($"Material: {mat.name} usa shader: {mat.shader.name}");
+                }
             }
         }
 
