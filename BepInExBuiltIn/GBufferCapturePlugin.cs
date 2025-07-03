@@ -245,7 +245,7 @@ namespace GBufferCapture
 
             if (Input.GetKeyDown(KeyCode.Alpha0))
             {
-                Utils.DumpShaders();
+                Utils.ReplaceShader("UWE/Terrain/Triplanar with Capping", "TriplanarWithCapping");
             }
 
             if (lastFog != fogEntry.Value && cb != null)

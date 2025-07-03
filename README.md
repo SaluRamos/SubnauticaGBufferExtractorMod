@@ -33,7 +33,7 @@ RECOMMENDATION: I recommend you to use dev commands such as "daynightspeed" to i
 
 For those who want to improve this project.  
 use Unity 2019.4.36f1: https://unity.com/releases/editor/archive  
-The repository has compiled assetBundle, but you can compile inside Unity Project just by executing: Build -> Build Shader AssetBundle.  
+Compile the shaders inside Unity Project, just by executing Build -> Build Shader AssetBundle.  
 
 - https://github.com/sinai-dev/UnityExplorer (very useful to inspect gameobjects ingame)  
 - https://github.com/AssetRipper/AssetRipper (very useful to decompile subnautica and read every script/shader of the game, remember to use "decompile" shader option)  

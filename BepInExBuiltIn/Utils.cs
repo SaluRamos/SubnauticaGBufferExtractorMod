@@ -94,9 +94,24 @@ namespace GBufferCapture
             {
                 if (mat.shader != null)
                 {
-                    Debug.LogWarning($"Material: {mat.name} usa shader: {mat.shader.name}");
+                    Debug.LogWarning($"Material: {mat.name} uses shader: {mat.shader.name}");
                 }
             }
+        }
+
+        public static void ReplaceShader(string name, string shaderName)
+        {
+            Shader replacer =LoadExternalShader(shaderName);
+            int replacedAmount = 0;
+            foreach (var mat in Resources.FindObjectsOfTypeAll<Material>())
+            {
+                if (mat.shader != null && mat.shader.name == name)
+                {
+                    mat.shader = replacer;
+                    replacedAmount++;
+                }
+            }
+            Debug.Log($"total replaced: {replacedAmount}");
         }
 
         public static Shader LoadExternalShader(string shaderName)
@@ -114,7 +129,7 @@ namespace GBufferCapture
             {
                 if (!loadedShader.isSupported)
                 {
-                    Debug.LogWarning(shaderName + " carregado, mas não suportado pela plataforma atual!");
+                    Debug.LogWarning(shaderName + " loaded, but not supported!");
                 }
             }
             else

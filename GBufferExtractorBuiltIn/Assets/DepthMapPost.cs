@@ -38,7 +38,6 @@ public class DepthMapPost : MonoBehaviour
         material = new Material(shader);
         material.SetTexture("_MainTex", tex);
         material.hideFlags = HideFlags.HideAndDontSave;
-        // material.SetFloat("_DepthCutoff", gbuffersMaxRenderDistance);
 
         mainCam.depthTextureMode = DepthTextureMode.Depth;
 

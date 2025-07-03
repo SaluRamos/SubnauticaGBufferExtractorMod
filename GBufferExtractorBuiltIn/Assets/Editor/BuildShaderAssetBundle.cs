@@ -13,9 +13,24 @@ public class BuildShaderAssetBundle
         var clearMethod = logEntries.GetMethod("Clear", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
         clearMethod.Invoke(null, null);
 
+        string[] shaderFiles = Directory.GetFiles("Assets/Shaders", "*.shader", SearchOption.AllDirectories);
+
+        Debug.Log("Verificando shaders antes do build...");
+        foreach (string path in shaderFiles)
+        {
+            Shader shader = AssetDatabase.LoadAssetAtPath<Shader>(path);
+            if (shader != null && ShaderUtil.ShaderHasError(shader))
+            {
+                Debug.LogError($"BUILD ABORTADO: O shader em '{path}' contém erros de compilação.");
+                return;
+            }
+        }
+        Debug.Log("Nenhum erro de importação encontrado. Iniciando o build...");
+
+        
+
         AssetBundleBuild[] buildMap = new AssetBundleBuild[1];
 
-        string[] shaderFiles = Directory.GetFiles("Assets/Shaders", "*.shader", SearchOption.AllDirectories);
 
         foreach (string file in shaderFiles)
         {
@@ -26,8 +41,18 @@ public class BuildShaderAssetBundle
         buildMap[0].assetNames = shaderFiles.Select(path => path.Replace('\\', '/')).ToArray();
 
         Directory.CreateDirectory(DepthMapPost.assetBundleFolderPath);
-        BuildPipeline.BuildAssetBundles(DepthMapPost.assetBundleFolderPath, buildMap, BuildAssetBundleOptions.None, BuildTarget.StandaloneWindows64);
-        Debug.Log("AssetBundle criado em " + DepthMapPost.assetBundleFolderPath);
+
+        BuildAssetBundleOptions options = BuildAssetBundleOptions.StrictMode | BuildAssetBundleOptions.ForceRebuildAssetBundle;
+
+        AssetBundleManifest manifest = BuildPipeline.BuildAssetBundles(DepthMapPost.assetBundleFolderPath, buildMap, options, BuildTarget.StandaloneWindows64);
+        if (manifest == null)
+        {
+            Debug.LogError("FAILED ASSET BUNDLE CREATION");
+        }
+        else
+        {
+            Debug.Log("AssetBundle criado em " + DepthMapPost.assetBundleFolderPath);
+        }
     }
 
 }

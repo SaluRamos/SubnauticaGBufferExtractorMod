@@ -41,7 +41,7 @@ Shader "UWE/Terrain/Triplanar with Capping" {
 			ColorMask 0
 			ZWrite Off
 			Fog {
-				Mode 0
+				Mode Off
 			}
 			GpuProgramID 64919
 			CGPROGRAM
@@ -273,7 +273,7 @@ Shader "UWE/Terrain/Triplanar with Capping" {
                 tmp2.y = inp.texcoord2.y;
                 tmp0.xy = tmp0.yy ? tmp2.xy : tmp0.xx;
                 tmp1.w = tmp0.y;
-                tmp1 = float4(tmp1.x, tmp1.y, 0.0, 1.0);
+                // tmp1 = float4(tmp1.x, tmp1.y, 0.0, 1.0);
                 o.sv_target = tmp1;
                 o.sv_target1.w = tmp1.w;
                 o.sv_target2.w = tmp0.x;
