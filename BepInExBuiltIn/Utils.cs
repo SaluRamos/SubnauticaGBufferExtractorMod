@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 namespace GBufferCapture
@@ -90,6 +87,7 @@ namespace GBufferCapture
             }
         }
 
+        //exibir todos os materiais e seus shaders na cena
         public static void DumpShaders()
         {
             foreach (var mat in Resources.FindObjectsOfTypeAll<Material>())
@@ -99,6 +97,57 @@ namespace GBufferCapture
                     Debug.LogWarning($"Material: {mat.name} usa shader: {mat.shader.name}");
                 }
             }
+        }
+
+        public static Shader LoadExternalShader(string shaderName)
+        {
+            var bundle = AssetBundle.LoadFromFile(GBufferCapturePlugin.assetBundlePath);
+
+            if (bundle == null)
+            { 
+                Debug.LogError("Falha ao carregar AssetBundle!");
+            }
+
+            Shader loadedShader = bundle.LoadAsset<Shader>(shaderName);
+
+            if (loadedShader != null)
+            {
+                if (!loadedShader.isSupported)
+                {
+                    Debug.LogWarning(shaderName + " carregado, mas não suportado pela plataforma atual!");
+                }
+            }
+            else
+            {
+                Debug.LogError(shaderName + " não encontrado no AssetBundle!");
+            }
+
+            bundle.Unload(false);
+            return loadedShader;
+        }
+
+        public static void SaveJPG(string fileName, RenderTexture rtFull, int quality=95)
+        {
+            string fullPath = System.IO.Path.Combine(GBufferCapturePlugin.captureFolder, fileName);
+            int newWidth = rtFull.width / 2;
+            int newHeight = rtFull.height / 2;
+            RenderTexture rtHalf = RenderTexture.GetTemporary(newWidth, newHeight, 0);
+            Graphics.Blit(rtFull, rtHalf);
+            Texture2D screenShot = new Texture2D(newWidth, newHeight, TextureFormat.RGB24, false);
+            RenderTexture.active = rtHalf;
+            screenShot.ReadPixels(new Rect(0, 0, newWidth, newHeight), 0, 0);
+            screenShot.Apply();
+            byte[] bytes = screenShot.EncodeToJPG(quality);
+            try
+            {
+                File.WriteAllBytes(fullPath, bytes);
+            }
+            catch (IOException ex)
+            {
+                Debug.LogError($"Error in saving file: {ex.Message}");
+            }
+            UnityEngine.Object.Destroy(screenShot);
+            RenderTexture.ReleaseTemporary(rtHalf);
         }
 
     }

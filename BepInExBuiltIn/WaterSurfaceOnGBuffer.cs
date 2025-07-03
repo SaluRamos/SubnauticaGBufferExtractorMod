@@ -19,7 +19,7 @@ namespace GBufferCapture
         void Awake()
         {
             cam = GetComponent<Camera>();
-            Shader gbufferShader = GBufferCapturePlugin.LoadExternalShader(GBufferCapturePlugin.assetBundlePath, "WaterSurface");
+            Shader gbufferShader = Utils.LoadExternalShader("WaterSurface");
             if (cam == null || gbufferShader == null)
             {
                 Destroy(this);

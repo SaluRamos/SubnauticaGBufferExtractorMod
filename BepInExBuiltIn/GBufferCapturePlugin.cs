@@ -54,20 +54,11 @@ namespace GBufferCapture
             depthControlWaterLevelToleranceEntry = Config.Bind("General", "DepthControlWaterLevelTolerance", 100.0f, "the mod shaders converts depthmap to worldPos and may fail when you move camera too fast (doesnt know why exactly), increase this value to reduce/remove this errors effect in captured images");
             seeOnGUIEntry = Config.Bind("General", "seeOnGUI", true, "enable/disable mod OnGUI");
             fogEntry = Config.Bind("General", "Fog", true, "enable/disable fog without affecting captures");
-            lastFog = !fogEntry.Value;
 
             Logger.LogInfo($"PluginName: {PluginName}, VersionString: {VersionString} is loading...");
             harmony.PatchAll();
             Logger.LogInfo($"PluginName: {PluginName}, VersionString: {VersionString} is loaded.");
             Log = Logger;
-            if (GraphicsSettings.renderPipelineAsset == null)
-            {
-                Logger.LogInfo("Using Built-in Render Pipeline");
-            }
-            else
-            {
-                Logger.LogInfo("Using SRP: " + GraphicsSettings.renderPipelineAsset.GetType().Name);
-            }
         }
 
         public static float gbuffersMaxRenderDistance => gbuffersMaxRenderDistanceEntry.Value;
@@ -116,19 +107,19 @@ namespace GBufferCapture
             idRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGB32);
             idRT.Create();
 
-            monocromaticControlDepthShader = LoadExternalShader(assetBundlePath, "DepthPost");
+            monocromaticControlDepthShader = Utils.LoadExternalShader("DepthPost");
             mcdMaterial = new Material(monocromaticControlDepthShader);
             mcdMaterial.hideFlags = HideFlags.HideAndDontSave;
 
-            texControlDepthShader = LoadExternalShader(assetBundlePath, "NormalPost");
+            texControlDepthShader = Utils.LoadExternalShader("NormalPost");
             tcdMaterial = new Material(texControlDepthShader);
             tcdMaterial.hideFlags = HideFlags.HideAndDontSave;
 
-            emissionShader = LoadExternalShader(assetBundlePath, "EmissionMap");
+            emissionShader = Utils.LoadExternalShader("EmissionMap");
             emissionMat = new Material(emissionShader);
             emissionMat.hideFlags = HideFlags.HideAndDontSave;
 
-            midShader = LoadExternalShader(assetBundlePath, "MaterialID");
+            midShader = Utils.LoadExternalShader("MaterialID");
             midMaterial = new Material(midShader);
             midMaterial.hideFlags = HideFlags.HideAndDontSave;
 
@@ -257,7 +248,7 @@ namespace GBufferCapture
                 Utils.DumpShaders();
             }
 
-            if (lastFog != fogEntry.Value && cb != null) 
+            if (lastFog != fogEntry.Value && cb != null)
             {
                 if (!fogEntry.Value)
                 {
@@ -268,6 +259,11 @@ namespace GBufferCapture
                     mainCam.targetTexture = mainCamTargetTextureRT;
                 }
                 lastFog = fogEntry.Value;
+            }
+            
+            if (cb == null)
+            { 
+                lastFog = !fogEntry.Value;
             }
 
             if (Input.GetKeyDown(KeyCode.F10))
@@ -289,63 +285,12 @@ namespace GBufferCapture
                         mainCam.Render();
                         mainCam.targetTexture = mainCamTargetTextureRT;
                     }
-                    SaveJPG($"{timestamp}_base.png", mainCam, mainRT);
-                    SaveJPG($"{timestamp}_depth.png", mainCam, depthRT);
-                    SaveJPG($"{timestamp}_normal.png", mainCam, normalRT);
-                    SaveJPG($"{timestamp}_albedo.png", mainCam, albedoRT);
+                    Utils.SaveJPG($"{timestamp}_base.png", mainRT);
+                    Utils.SaveJPG($"{timestamp}_depth.png", depthRT);
+                    Utils.SaveJPG($"{timestamp}_normal.png", normalRT);
+                    Utils.SaveJPG($"{timestamp}_albedo.png", albedoRT);
                 }
             }
-        }
-
-        public static Shader LoadExternalShader(string bundlePath, string shaderName)
-        {
-            var bundle = AssetBundle.LoadFromFile(bundlePath);
-
-            if (bundle == null)
-            {
-                Debug.LogError("Falha ao carregar AssetBundle!");
-            }
-
-            Shader loadedShader = bundle.LoadAsset<Shader>(shaderName);
-
-            if (loadedShader != null)
-            {
-                if (!loadedShader.isSupported)
-                {
-                    Debug.LogWarning(shaderName + " carregado, mas não suportado pela plataforma atual!");
-                }
-            }
-            else
-            {
-                Debug.LogError(shaderName + " não encontrado no AssetBundle!");
-            }
-
-            bundle.Unload(false);
-            return loadedShader;
-        }
-
-        private void SaveJPG(string fileName, Camera cam, RenderTexture rtFull)
-        {
-            string fullPath = System.IO.Path.Combine(captureFolder, fileName);
-            int newWidth = cam.pixelWidth / 2;
-            int newHeight = cam.pixelHeight / 2;
-            RenderTexture rtHalf = RenderTexture.GetTemporary(newWidth, newHeight, 0);
-            Graphics.Blit(rtFull, rtHalf);
-            Texture2D screenShot = new Texture2D(newWidth, newHeight, TextureFormat.RGB24, false);
-            RenderTexture.active = rtHalf;
-            screenShot.ReadPixels(new Rect(0, 0, newWidth, newHeight), 0, 0);
-            screenShot.Apply();
-            byte[] bytes = screenShot.EncodeToJPG(95);
-            try
-            {
-                File.WriteAllBytes(fullPath, bytes);
-            }
-            catch (IOException ex)
-            {
-                Debug.LogError($"Error in saving file: {ex.Message}");
-            }
-            Destroy(screenShot);
-            RenderTexture.ReleaseTemporary(rtHalf);
         }
 
     }
