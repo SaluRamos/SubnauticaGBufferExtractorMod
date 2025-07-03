@@ -1,33 +1,41 @@
 ## Objective
 
-capture the g-buffers of Subnautica (and Subnautica Below Zero) and save them in JPG format to create rich datasets.  
-install by putting the mod DLL inside BepInEx/plugins.  
-In game, just press F10 to start/stop recoording. The captures are taken every half second (Configurable ingame if you have ConfigurationManager, just press F1 to open manager menu)  
+capture the g-buffers of Subnautica (and Subnautica Below Zero) and save them in JPG format to create a rich dataset.  
 
 the captured gbuffers are:  
 - Final Render (WORKING)  
-- World/Local Normal Map  (WORKING)  
+- World Normal Map (WORKING)  
 - Depth Map (WORKING)  
 - Albedo Map (WORKING)  
 - Emission Map (NOT WORKING)  
 - ShaderID/Segmentation per Material (NOT WORKING)  
 
-![alt text](readme_images/gbuffers.png)
+![alt text](readme_images/gbuffers.png)  
 
-## Configuration
+## How to use  
 
-You need to modify the Paths (variables "assetBundleFolderPath" and "captureFolder") in BepInExBuiltin/GBufferCapturePlugin.cs  
-The "assetBundleFolderPath" must be fullPath to BepInExBuiltin/Shaders  
-The repository has compiled assetBundle, but you can compile inside Unity Project just by executing: Build -> Build Shader AssetBundle.  
+Install by extrating the mod inside "PathToSubnauticaFolder/BepInEx/plugins".  
+ConfigurationManager plugin is required for you to configure paths ingame.  
+Inside the game, Press F1 to open manager menu, then configure "CaptureFolder" and "AssetBundlePath".  
+The "assetBundleFolderPath" must be full path to "PathToSubnauticaFolder/BepInEx/plugins/GBufferCapture/Shaders"  
+The "CaptureFolder" is self-explanatory.
+INSIDE A CREATIVE WORLD, press F11 to start mod core. (DO NOT START MOD CORE AT GAME MENU)  
+then, just press F10 to start/stop recoording. The captures are taken every one second by default.  
+
+WARNING: In current build, if you get back to game menu, you will need to restart the game for the capture system to work again  
+
+RECOMMENDATION: I recommend you to use dev commands such as "daynightspeed" to increase light diversity in you dataset and "fog" to see further away. SHIFT + ENTER opens command entry.  
 
 ## Dependecies
 
 - https://github.com/BepInEx/BepInEx  
+- https://github.com/BepInEx/BepInEx.ConfigurationManager (configure ingame capture interval, assetbundlepath, capturefolderpath)  
 
 ## Utils
 
-use Unity 2019.4.36f1: https://unity.com/releases/editor/archive
+For those who want to improve this project.  
+use Unity 2019.4.36f1: https://unity.com/releases/editor/archive  
+The repository has compiled assetBundle, but you can compile inside Unity Project just by executing: Build -> Build Shader AssetBundle.  
 
-- https://github.com/BepInEx/BepInEx.ConfigurationManager (configure ingame capture interval)  
-- https://github.com/sinai-dev/UnityExplorer  
-- https://github.com/AssetRipper/AssetRipper (use decompile shader config!)  
+- https://github.com/sinai-dev/UnityExplorer (very useful to inspect gameobjects ingame)  
+- https://github.com/AssetRipper/AssetRipper (very useful to decompile subnautica and read every script/shader of the game, remember to use "decompile" shader option)  

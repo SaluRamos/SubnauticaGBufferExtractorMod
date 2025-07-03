@@ -22,13 +22,13 @@ namespace GBufferCapture {
 
         public static GBufferCapturePlugin instance { get; private set; }
 
-        public static string assetBundleFolderPath = "E:/UnityGBufferExtractorMod/BepInExBuiltIn/Shaders"; //path to shaders asset bundle
-        public static string assetBundlePath = $"{assetBundleFolderPath}/bundle";
-        public string captureFolder = "E:/EPE/data/game_gbuffers/bepinex"; //local which captures are saved
+        public static string assetBundleFolderPath => assetBundleFolderPathEntry.Value; //path to shaders asset bundle
+        public static string assetBundlePath => assetBundleFolderPathEntry != null ? $"{assetBundleFolderPath}/bundle" : null;
+        public static string captureFolder => captureFolderEntry.Value; //local which captures are saved
 
         private bool isCapturing = false;
         private float timer = 0f;
-        private float captureInterval = 0.5f; // 500 ms
+        private float captureInterval => captureThreadSleep.Value; // 1 second
 
         private Camera mainCam;
         private Camera gbufferCam;
@@ -39,14 +39,20 @@ namespace GBufferCapture {
         private static readonly Harmony harmony = new Harmony(MyGUID);
         public static ManualLogSource Log = new ManualLogSource(PluginName);
 
-        public static string captureThreadSleepKey = "Capture Thread Sleep";
         public static ConfigEntry<float> captureThreadSleep;
+        public static ConfigEntry<string> assetBundleFolderPathEntry;
+        public static ConfigEntry<string> captureFolderEntry;
+        public static ConfigEntry<float> gbuffersMaxRenderDistanceEntry;
+        public static ConfigEntry<float> depthControlWaterLevelToleranceEntry;
 
         private void Awake()
         {
             instance = this;
-            captureThreadSleep = Config.Bind("General", captureThreadSleepKey, 1.0f, new ConfigDescription("Set time between captures in seconds", new AcceptableValueRange<float>(0.0f, 10.0f)));
-            captureThreadSleep.SettingChanged += ConfigSettingChanged;
+            captureThreadSleep = Config.Bind("General", "CaptureThreadSleep", 1.0f, new ConfigDescription("Set time between captures in seconds", new AcceptableValueRange<float>(0.0f, 10.0f)));
+            gbuffersMaxRenderDistanceEntry = Config.Bind("General", "GBufferMaxRenderDistanceUnderwater", 120.0f, "Max saw distance by gbuffers underwater, upperwater default is 1000.0f");
+            depthControlWaterLevelToleranceEntry = Config.Bind("General", "DepthControlWaterLevelTolerance", 100.0f, "the mod shaders converts depthmap to worldPos and may fail when you move camera too fast (doesnt know why exactly), increase this value to reduce/remove this errors effect in captured images");
+            assetBundleFolderPathEntry = Config.Bind("Paths", "AssetBundleFolderPath", "E:/UnityGBufferExtractorMod/BepInExBuiltIn/Shaders", "Path to the folder containing the shaders asset bundle");
+            captureFolderEntry = Config.Bind("Paths", "CaptureFolder", "E:/EPE/data/game_gbuffers/bepinex", "Folder where captures will be saved");
 
             Logger.LogInfo($"PluginName: {PluginName}, VersionString: {VersionString} is loading...");
             harmony.PatchAll();
@@ -62,20 +68,8 @@ namespace GBufferCapture {
             }
         }
 
-        private void ConfigSettingChanged(object sender, System.EventArgs e)
-        {
-            SettingChangedEventArgs settingChangedEventArgs = e as SettingChangedEventArgs;
-            if (settingChangedEventArgs == null)
-            {
-                return;
-            }
-            if (settingChangedEventArgs.ChangedSetting.Definition.Key == captureThreadSleepKey)
-            {
-                captureInterval = captureThreadSleep.Value;
-            }
-        }
 
-        private float gbuffersMaxRenderDistance = 120f;
+        public static float gbuffersMaxRenderDistance => gbuffersMaxRenderDistanceEntry.Value;
 
         private CommandBuffer cb;
         private RenderTexture mainRT;
@@ -90,7 +84,7 @@ namespace GBufferCapture {
         private Shader texControlDepthShader;
         private Material mcdMaterial; //monocromatic control depth
         private Shader monocromaticControlDepthShader;
-        private Material tcdMaterial; //tex control depth
+        private Material tcdMaterial; //texture control depth
         private Shader emissionShader;
         private Material emissionMat;
 
@@ -104,7 +98,7 @@ namespace GBufferCapture {
             //int waterGBufferLayer = LayerMask.NameToLayer("WaterGBufferOnly");
             gbufferCam.CopyFrom(mainCam);
             //gbufferCam.cullingMask = 1 << waterGBufferLayer;
-            gbufferCam.clearFlags = CameraClearFlags.Nothing;
+            // gbufferCam.clearFlags = CameraClearFlags.Nothing;
             gbufferCam.depth = mainCam.depth - 1;
             //mainCam.cullingMask &= ~(1 << waterGBufferLayer);
 
@@ -195,6 +189,7 @@ namespace GBufferCapture {
         }
 
         private WaterGBufferInjector injectorInstance;
+
         void SetupWaterSurfaceOnGBuffers()
         {
             if (injectorInstance != null)
@@ -212,20 +207,18 @@ namespace GBufferCapture {
                 GUI.DrawTexture(new Rect(256, 0, 256, 256), normalRT, ScaleMode.ScaleToFit, false);
                 GUI.DrawTexture(new Rect(512, 0, 256, 256), albedoRT, ScaleMode.ScaleToFit, false);
                 GUI.DrawTexture(new Rect(768, 0, 256, 256), mainRT, ScaleMode.ScaleToFit, false);
-                //GUI.DrawTexture(new Rect(768, 0, 256, 256), emissionRT, ScaleMode.ScaleToFit, false);
-                //GUI.DrawTexture(new Rect(1024, 0, 256, 256), idRT, ScaleMode.ScaleToFit, false);
             }
         }
 
-        private float depthControlWaterLevel = 100f;
+        private float depthControlWaterLevel => depthControlWaterLevelToleranceEntry.Value;
 
         void LateUpdate()
         {
             if (cb != null)
             {
                 Graphics.Blit(mainCam.targetTexture, null as RenderTexture);
-                cb.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
 
+                //isso seria usado no autodepth shader
                 //cb.SetGlobalMatrix("_CameraInvProj", mainCam.projectionMatrix.inverse);
                 //Matrix4x4 worldToCameraMatrix = mainCam.worldToCameraMatrix;
                 //Transform transform = FindObjectOfType<WaterscapeVolume>().waterPlane.transform;
@@ -234,6 +227,7 @@ namespace GBufferCapture {
                 //Vector3 normal = plane2.normal;
                 //cb.SetGlobalVector("_UweVsWaterPlane", new Vector4(normal.x, normal.y, normal.z, plane2.distance));
 
+                cb.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
                 cb.SetGlobalMatrix("CameraToWorld", mainCam.cameraToWorldMatrix);
                 cb.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistance);
                 if (UnderWaterListener_Patch.IsUnderWater())
@@ -259,7 +253,7 @@ namespace GBufferCapture {
             if (Input.GetKeyDown(KeyCode.F10))
             {
                 isCapturing = !isCapturing;
-                Debug.Log($"Captura de G-Buffer {(isCapturing ? "iniciada" : "parada")}");
+                Debug.Log($"G-Buffer capture {(isCapturing ? "started" : "stopped")}");
             }
 
             if (isCapturing && cb != null)
@@ -268,11 +262,6 @@ namespace GBufferCapture {
                 if (timer >= captureInterval)
                 {
                     timer = 0f;
-                    if (mainCam == null)
-                    {
-                        Logger.LogDebug("No camera selected");
-                        return;
-                    }
                     string timestamp = $"{System.DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}";
                     SaveJPG($"{timestamp}_base.png", mainCam, mainRT);
                     SaveJPG($"{timestamp}_depth.png", mainCam, depthRT);
@@ -327,7 +316,7 @@ namespace GBufferCapture {
             }
             catch (IOException ex)
             {
-                Debug.LogError($"Erro ao salvar o arquivo: {ex.Message}");
+                Debug.LogError($"Error in saving file: {ex.Message}");
             }
             Destroy(screenShot);
             RenderTexture.ReleaseTemporary(rtHalf);

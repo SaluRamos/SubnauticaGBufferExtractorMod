@@ -5,7 +5,6 @@ Shader "Hidden/DepthPost"
     Properties 
     {
         _MainTex ("Texture", 2D) = "white" {} 
-        _DepthCutoff ("Depth Cutoff", Float) = 150.0
     }
     SubShader
     {
@@ -66,15 +65,16 @@ Shader "Hidden/DepthPost"
                 float3 vpos = float3((i.uv * 2 - 1 - p13_31) / p11_22 * lerp(vz, 1, isOrtho), -vz);
                 float4 wpos = mul(CameraToWorld, float4(vpos, 1));
 
+                float depth = LinearEyeDepth(rawDepth);
+                float mask;
                 if (wpos.y > _WaterLevel)
                 {
-                    float depth = LinearEyeDepth(rawDepth);
-                    float mask = 1.0 - step(1000.0, depth);
-                    float3 normalColor = tex2D(_MainTex, i.uv).rgb;
-                    return float4(normalColor * mask, 1.0);
+                    mask = 1.0 - step(1000.0, depth);
                 }
-                float depth = LinearEyeDepth(rawDepth);
-                float mask = 1.0 - step(_DepthCutoff, depth);
+                else
+                {
+                    mask = 1.0 - step(_DepthCutoff, depth);
+                }
                 float3 normalColor = tex2D(_MainTex, i.uv).rgb;
                 return float4(normalColor * mask, 1.0);
             }
