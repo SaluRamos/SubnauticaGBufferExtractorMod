@@ -45,7 +45,6 @@ namespace GBufferCapture
             {
                 Destroy(waterGBufferMaterial);
             }
-            Debug.Log("[WaterMod] WaterGBufferInjector e seus recursos foram limpos.");
         }
 
     }
@@ -81,37 +80,57 @@ namespace GBufferCapture
                 return;
             }
 
-            JobHandle jobHandle = (JobHandle)jobHandleField.GetValue(__instance);
-            jobHandle.Complete();
-            waterPrePassCB.Clear();
-
-            Mesh waterPatchMesh = patchMeshField.GetValue(__instance) as Mesh;
-            var waterMatricesQueue = (NativeQueue<float4x4>)matricesQueueField.GetValue(__instance);
-
-            if (waterPatchMesh == null || !waterMatricesQueue.IsCreated || waterMatricesQueue.Count == 0)
+            try
             {
+                JobHandle jobHandle = (JobHandle)jobHandleField.GetValue(__instance);
+                jobHandle.Complete();
+                waterPrePassCB.Clear();
+
+                Mesh waterPatchMesh = patchMeshField.GetValue(__instance) as Mesh;
+                var waterMatricesQueue = (NativeQueue<float4x4>)matricesQueueField.GetValue(__instance);
+
+                if (waterPatchMesh == null || !waterMatricesQueue.IsCreated || waterMatricesQueue.Count == 0)
+                {
+                    return;
+                }
+
+                WaterSurface waterSurface = WaterSurface.Get();
+                var normalsTex = (RenderTexture)AccessTools.Field(typeof(WaterSurface), "normalsTexture").GetValue(waterSurface);
+                var displacementGenerator = AccessTools.Field(typeof(WaterSurface), "displacementGenerator").GetValue(waterSurface);
+                var choppyScale = (float)AccessTools.Field(displacementGenerator.GetType(), "choppyScale").GetValue(displacementGenerator);
+                var waterLevel = waterSurface.transform.position.y + waterSurface.waterOffset;
+
+                waterGBufferMaterial.SetTexture("_WaterDisplacementMap", waterSurface.GetDisplacementTexture());
+                waterGBufferMaterial.SetTexture("_NormalsTex", normalsTex);
+                waterGBufferMaterial.SetFloat("_WaterPatchLength", waterSurface.GetPatchLength());
+
+                NativeArray<float4x4> matricesNativeArray = waterMatricesQueue.ToArray(Allocator.Temp);
+                for (int i = 0; i < matricesNativeArray.Length; i++)
+                {
+                    waterPrePassCB.DrawMesh(waterPatchMesh, (Matrix4x4)matricesNativeArray[i], waterGBufferMaterial, 0, 0);
+                }
+                matricesNativeArray.Dispose();
+
+                return;
+            } 
+            catch 
+            {
+                GBufferCapturePlugin.instance.ClearCB();
+                Clear();
                 return;
             }
 
-            WaterSurface waterSurface = WaterSurface.Get();
-            var normalsTex = (RenderTexture)AccessTools.Field(typeof(WaterSurface), "normalsTexture").GetValue(waterSurface);
-            var displacementGenerator = AccessTools.Field(typeof(WaterSurface), "displacementGenerator").GetValue(waterSurface);
-            var choppyScale = (float)AccessTools.Field(displacementGenerator.GetType(), "choppyScale").GetValue(displacementGenerator);
-            var waterLevel = waterSurface.transform.position.y + waterSurface.waterOffset;
-
-            waterGBufferMaterial.SetTexture("_WaterDisplacementMap", waterSurface.GetDisplacementTexture());
-            waterGBufferMaterial.SetTexture("_NormalsTex", normalsTex);
-            waterGBufferMaterial.SetFloat("_WaterPatchLength", waterSurface.GetPatchLength());
-
-            NativeArray<float4x4> matricesNativeArray = waterMatricesQueue.ToArray(Allocator.Temp);
-            for (int i = 0; i < matricesNativeArray.Length; i++)
-            {
-                waterPrePassCB.DrawMesh(waterPatchMesh, (Matrix4x4)matricesNativeArray[i], waterGBufferMaterial, 0, 0);
-            }
-            matricesNativeArray.Dispose();
-
-            return;
         }
+
+        public static void Clear()
+        {
+            waterPrePassCB = null;
+            waterGBufferMaterial = null;
+            patchMeshField = null;
+            matricesQueueField = null;
+            jobHandleField = null;
+        }
+
     }
 
 }

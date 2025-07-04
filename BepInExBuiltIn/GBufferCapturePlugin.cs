@@ -22,13 +22,8 @@ namespace GBufferCapture
     {
 
         public static GBufferCapturePlugin instance { get; private set; }
-
         public static string assetBundlePath = Paths.PluginPath + "\\GBufferCapture\\Shaders\\bundle";
         public static string captureFolder = Paths.PluginPath + "\\GBufferCapture\\captures";
-
-        private bool isCapturing = false;
-        private float timer = 0f;
-        private float captureInterval => captureThreadSleep.Value; // 1 second
 
         private Camera mainCam;
         private Camera gbufferCam;
@@ -39,7 +34,7 @@ namespace GBufferCapture
         private static readonly Harmony harmony = new Harmony(MyGUID);
         public static ManualLogSource Log = new ManualLogSource(PluginName);
 
-        public static ConfigEntry<float> captureThreadSleep;
+        public static ConfigEntry<float> captureIntervalEntry;
         public static ConfigEntry<float> gbuffersMaxRenderDistanceEntry;
         public static ConfigEntry<float> depthControlWaterLevelToleranceEntry;
         public static ConfigEntry<bool> seeOnGUIEntry;
@@ -49,7 +44,7 @@ namespace GBufferCapture
         {
             instance = this;
             Directory.CreateDirectory(captureFolder);
-            captureThreadSleep = Config.Bind("General", "CaptureThreadSleep", 1.0f, new ConfigDescription("Set time between captures in seconds", new AcceptableValueRange<float>(0.0f, 10.0f)));
+            captureIntervalEntry = Config.Bind("General", "CaptureInterval", 1.0f, new ConfigDescription("Set time between captures in seconds", new AcceptableValueRange<float>(0.0f, 10.0f)));
             gbuffersMaxRenderDistanceEntry = Config.Bind("General", "GBufferMaxRenderDistanceUnderwater", 120.0f, "Max saw distance by gbuffers underwater, upperwater default is 1000.0f");
             depthControlWaterLevelToleranceEntry = Config.Bind("General", "DepthControlWaterLevelTolerance", 100.0f, "the mod shaders converts depthmap to worldPos and may fail when you move camera too fast (doesnt know why exactly), increase this value to reduce/remove this errors effect in captured images");
             seeOnGUIEntry = Config.Bind("General", "seeOnGUI", true, "enable/disable mod OnGUI");
@@ -64,6 +59,7 @@ namespace GBufferCapture
         public static float gbuffersMaxRenderDistance => gbuffersMaxRenderDistanceEntry.Value;
 
         private CommandBuffer cb;
+
         private RenderTexture mainCamTargetTextureRT;
         private RenderTexture mainRT;
         private RenderTexture depthRT;
@@ -86,6 +82,7 @@ namespace GBufferCapture
 
         private void SetupCB()
         {
+            Debug.LogWarning("capture started");
             GameObject gbufferCamObj = new GameObject("GBufferCam");
             gbufferCamObj.transform.SetParent(mainCam.transform.parent);
             gbufferCamObj.transform.position = mainCam.transform.position;
@@ -94,34 +91,40 @@ namespace GBufferCapture
             gbufferCam.CopyFrom(mainCam);
             gbufferCam.depth = mainCam.depth - 1;
 
-            mainRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 24, RenderTextureFormat.ARGB32);
-            mainRT.Create();
-            depthRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
-            depthRT.Create();
-            normalRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
-            normalRT.Create();
-            albedoRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
-            albedoRT.Create();
-            emissionRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGB32);
-            emissionRT.Create();
-            idRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGB32);
-            idRT.Create();
+            if (mainRT == null)
+            { 
+                mainRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 24, RenderTextureFormat.ARGB32);
+                mainRT.Create();
+                depthRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
+                depthRT.Create();
+                normalRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
+                normalRT.Create();
+                albedoRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
+                albedoRT.Create();
+                emissionRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGB32);
+                emissionRT.Create();
+                idRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGB32);
+                idRT.Create();
+            }
 
-            monocromaticControlDepthShader = Utils.LoadExternalShader("DepthPost");
-            mcdMaterial = new Material(monocromaticControlDepthShader);
-            mcdMaterial.hideFlags = HideFlags.HideAndDontSave;
+            if (monocromaticControlDepthShader == null)
+            { 
+                monocromaticControlDepthShader = Utils.LoadExternalShader("DepthPost");
+                mcdMaterial = new Material(monocromaticControlDepthShader);
+                mcdMaterial.hideFlags = HideFlags.HideAndDontSave;
 
-            texControlDepthShader = Utils.LoadExternalShader("NormalPost");
-            tcdMaterial = new Material(texControlDepthShader);
-            tcdMaterial.hideFlags = HideFlags.HideAndDontSave;
+                texControlDepthShader = Utils.LoadExternalShader("NormalPost");
+                tcdMaterial = new Material(texControlDepthShader);
+                tcdMaterial.hideFlags = HideFlags.HideAndDontSave;
 
-            emissionShader = Utils.LoadExternalShader("EmissionMap");
-            emissionMat = new Material(emissionShader);
-            emissionMat.hideFlags = HideFlags.HideAndDontSave;
+                emissionShader = Utils.LoadExternalShader("EmissionMap");
+                emissionMat = new Material(emissionShader);
+                emissionMat.hideFlags = HideFlags.HideAndDontSave;
 
-            midShader = Utils.LoadExternalShader("MaterialID");
-            midMaterial = new Material(midShader);
-            midMaterial.hideFlags = HideFlags.HideAndDontSave;
+                midShader = Utils.LoadExternalShader("MaterialID");
+                midMaterial = new Material(midShader);
+                midMaterial.hideFlags = HideFlags.HideAndDontSave;
+            }
 
             gbufferCam.depthTextureMode = DepthTextureMode.Depth;
 
@@ -190,6 +193,8 @@ namespace GBufferCapture
             injectorInstance = gbufferCam.gameObject.AddComponent<WaterGBufferInjector>();
         }
 
+        private GUIStyle labelStyle;
+
         void OnGUI()
         {
             if (cb != null && seeOnGUIEntry.Value)
@@ -202,13 +207,21 @@ namespace GBufferCapture
                     GUI.DrawTexture(new Rect(0, 432, 256, 144), mainRT, ScaleMode.StretchToFill, false);
                 }
             }
+            if (labelStyle == null)
+            {
+                labelStyle = new GUIStyle(GUI.skin.label);
+                labelStyle.normal.textColor = Color.white;
+                labelStyle.fontSize = 20;
+                labelStyle.fontStyle = FontStyle.Bold;
+            }
+            GUI.Label(new Rect(10, 950, 300, 200), $"Mod Core {(cb == null ? "Disabled" : "Enabled")}\nCapture {(isCapturing ? "Enabled" : "Disabled")}\nTotal Captures: {totalCaptures}\nCapture Interval: {captureIntervalEntry.Value}s", labelStyle);
         }
 
         private float depthControlWaterLevel => depthControlWaterLevelToleranceEntry.Value;
 
         void LateUpdate()
         {
-            if (cb != null)
+            if (cb != null && mainCam != null)
             {
                 //isso seria usado no autodepth shader
                 //cb.SetGlobalMatrix("_CameraInvProj", mainCam.projectionMatrix.inverse);
@@ -233,19 +246,53 @@ namespace GBufferCapture
             }
         }
 
+        private static int totalCaptures = 0;
+        private bool isCapturing = false;
+        private float timer = 0f;
+        private float captureInterval => captureIntervalEntry.Value;
+
+        public void ClearCB()
+        {
+            Debug.LogWarning("capture stopped");
+            if (gbufferCam != null && cb != null)
+            {
+                gbufferCam.RemoveCommandBuffer(CameraEvent.AfterEverything, cb);
+                GameObject.DestroyImmediate(gbufferCam.gameObject);
+            }
+            cb?.Release();
+            cb = null;
+            injectorInstance = null;
+            gbufferCam = null;
+            mainCam = null;
+        }
+
         void Update()
         {
             if (Input.GetKeyDown(KeyCode.F11))
             {
-                mainCam = FindObjectOfType<WaterSurfaceOnCamera>()?.gameObject.GetComponent<Camera>();
-                mainCamTargetTextureRT = mainCam.targetTexture;
-                SetupCB();
-                SetupWaterSurfaceOnGBuffers();
+                if (gbufferCam != null)
+                {
+                    ClearCB();
+                }
+                else
+                { 
+                    mainCam = FindObjectOfType<WaterSurfaceOnCamera>()?.gameObject.GetComponent<Camera>();
+                    mainCamTargetTextureRT = mainCam.targetTexture;
+                    SetupCB();
+                    SetupWaterSurfaceOnGBuffers();
+                }
             }
 
             if (Input.GetKeyDown(KeyCode.Alpha0))
             {
-                Utils.ReplaceShader("UWE/Terrain/Triplanar with Capping", "TriplanarWithCapping");
+                //Utils.InvestigateCenterObject();
+                //Utils.ReplaceShader("UWE/Terrain/Triplanar with Capping", "TriplanarWithCapping");
+                //Utils.ReplaceShader("UWE/Terrain/Triplanar", "Triplanar");
+            }
+
+            if (Input.GetKeyDown(KeyCode.Alpha9)) 
+            {
+                fogEntry.Value = !fogEntry.Value;
             }
 
             if (lastFog != fogEntry.Value && cb != null)
@@ -285,10 +332,11 @@ namespace GBufferCapture
                         mainCam.Render();
                         mainCam.targetTexture = mainCamTargetTextureRT;
                     }
-                    Utils.SaveJPG($"{timestamp}_base.png", mainRT);
-                    Utils.SaveJPG($"{timestamp}_depth.png", depthRT);
-                    Utils.SaveJPG($"{timestamp}_normal.png", normalRT);
-                    Utils.SaveJPG($"{timestamp}_albedo.png", albedoRT);
+                    Utils.SaveJPG($"{timestamp}_base", mainRT);
+                    Utils.SaveJPG($"{timestamp}_depth", depthRT);
+                    Utils.SaveJPG($"{timestamp}_normal", normalRT);
+                    Utils.SaveJPG($"{timestamp}_albedo", albedoRT);
+                    totalCaptures++;
                 }
             }
         }

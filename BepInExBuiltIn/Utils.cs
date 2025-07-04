@@ -99,19 +99,41 @@ namespace GBufferCapture
             }
         }
 
-        public static void ReplaceShader(string name, string shaderName)
+        public static void ReplaceShader(string originalShaderName, string newShaderName)
         {
-            Shader replacer =LoadExternalShader(shaderName);
-            int replacedAmount = 0;
-            foreach (var mat in Resources.FindObjectsOfTypeAll<Material>())
+            Shader newShader = LoadExternalShader(newShaderName);
+            if (newShader == null)
             {
-                if (mat.shader != null && mat.shader.name == name)
+                Debug.LogError("Shader de substituição não carregado. Abortando.");
+                return;
+            }
+            int materialsReplacedCount = 0;
+            int renderersAffectedCount = 0;
+            Renderer[] allRenderers = Resources.FindObjectsOfTypeAll<Renderer>();
+            foreach (Renderer renderer in allRenderers)
+            {
+                Material[] currentMaterials = renderer.materials;
+                bool materialsWereChanged = false;
+                for (int i = 0; i < currentMaterials.Length; i++)
                 {
-                    mat.shader = replacer;
-                    replacedAmount++;
+                    Material mat = currentMaterials[i];
+                    if (mat != null && mat.shader != null && mat.shader.name == originalShaderName)
+                    {
+                        string[] oldKeywords = mat.shaderKeywords;
+                        mat.shader = newShader;
+                        mat.shaderKeywords = oldKeywords;
+                        materialsWereChanged = true;
+                        materialsReplacedCount++;
+                    }
+                }
+                if (materialsWereChanged)
+                {
+                    renderer.materials = currentMaterials;
+                    renderersAffectedCount++;
                 }
             }
-            Debug.Log($"total replaced: {replacedAmount}");
+            Debug.Log($"materials replaced: {materialsReplacedCount}");
+            Debug.Log($"renderers replaced: {renderersAffectedCount}");
         }
 
         public static Shader LoadExternalShader(string shaderName)
@@ -119,7 +141,7 @@ namespace GBufferCapture
             var bundle = AssetBundle.LoadFromFile(GBufferCapturePlugin.assetBundlePath);
 
             if (bundle == null)
-            { 
+            {
                 Debug.LogError("Falha ao carregar AssetBundle!");
             }
 
@@ -141,9 +163,10 @@ namespace GBufferCapture
             return loadedShader;
         }
 
-        public static void SaveJPG(string fileName, RenderTexture rtFull, int quality=95)
+        public static void SaveJPG(string fileName, RenderTexture rtFull, int quality = 95)
         {
-            string fullPath = System.IO.Path.Combine(GBufferCapturePlugin.captureFolder, fileName);
+            fileName = System.IO.Path.GetFileNameWithoutExtension(fileName);
+            string fullPath = System.IO.Path.Combine(GBufferCapturePlugin.captureFolder, fileName + ".jpg");
             int newWidth = rtFull.width / 2;
             int newHeight = rtFull.height / 2;
             RenderTexture rtHalf = RenderTexture.GetTemporary(newWidth, newHeight, 0);

@@ -15,14 +15,14 @@ the captured gbuffers are:
 ## How to use  
 
 Install by extrating the mod inside "PathToSubnauticaFolder/BepInEx/plugins".  
-Inside the game, Press F1 to open manager menu.  
-INSIDE A CREATIVE WORLD, press F11 to start mod core. DO NOT START MOD CORE AT GAME MENU.  
-then, just press F10 to start/stop recording. The captures are taken every one second by default.  
+You can configure the mod inside the game by pressing F1 to open. (ConfigurationManager required)  
+Press F11 to enable/disable mod core.  
+Then, press F10 to start/stop recording. 
+The captures are taken every one second by default.  
 The captures will be at "PathToSubnauticaFolder/BepInEx/plugins/GBufferCapture/captures".  
-
-WARNING: In current build, if you get back to game menu, you will need to restart the game for the capture system to work again  
-
-RECOMMENDATION: I recommend you to use dev commands such as "daynightspeed" to increase light diversity in you dataset. SHIFT + ENTER opens command entry. Also, remove game GUI from captures using F6 hotkey.  
+Press NUMBER 9 to enable/disable fog without affecting captures.  
+  
+RECOMMENDATION: I recommend you to use dev commands such as "daynightspeed" to increase light diversity in you dataset. SHIFT + ENTER opens command entry. Also, remove game GUI from captures pressing F6 hotkey.  
 
 ## Dependecies
 
@@ -33,7 +33,7 @@ RECOMMENDATION: I recommend you to use dev commands such as "daynightspeed" to i
 
 For those who want to improve this project.  
 use Unity 2019.4.36f1: https://unity.com/releases/editor/archive  
-Compile the shaders inside Unity Project, just by executing Build -> Build Shader AssetBundle.  
+Compile the shaders inside Unity Project, just by executing: Build -> Build Shader AssetBundle.  
 
 - https://github.com/sinai-dev/UnityExplorer (very useful to inspect gameobjects ingame)  
 - https://github.com/AssetRipper/AssetRipper (very useful to decompile subnautica and read every script/shader of the game, remember to use "decompile" shader option)  
