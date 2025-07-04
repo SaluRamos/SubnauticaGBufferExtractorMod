@@ -25,7 +25,7 @@ Press NUMBER 9 to toggle fog without affecting captures.
   
 RECOMMENDATION: I recommend you to use dev commands such as "daynightspeed" to increase light diversity in you dataset. SHIFT + ENTER opens command entry. Also, remove game GUI from captures by pressing F6.  
 
-## Dependecies
+## Requirements
 
 - https://github.com/BepInEx/BepInEx  
 - https://github.com/BepInEx/BepInEx.ConfigurationManager (configure in-game mod variables)  

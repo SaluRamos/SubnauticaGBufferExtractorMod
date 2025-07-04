@@ -52,11 +52,9 @@ namespace GBufferCapture
     [HarmonyPatch]
     public static class WaterSurfacePatcher
     {
-        // Referências para o nosso sistema
+
         private static CommandBuffer waterPrePassCB;
         private static Material waterGBufferMaterial;
-
-        // Referências para os campos do jogo
         private static FieldInfo patchMeshField;
         private static FieldInfo matricesQueueField;
         private static FieldInfo jobHandleField;

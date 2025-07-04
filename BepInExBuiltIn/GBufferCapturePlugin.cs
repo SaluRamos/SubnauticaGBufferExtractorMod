@@ -252,13 +252,13 @@ namespace GBufferCapture
 
         public void ClearCB()
         {
+            Debug.LogWarning("mod core stopped");
             if (mainCam != null)
             {
                 mainCam.targetTexture = mainCamTargetTextureRT;
             }
             mainCam = null;
             fogEntry.Value = true;
-            Debug.LogWarning("mod core stopped");
             if (gbufferCam != null && cb != null)
             {
                 gbufferCam.RemoveCommandBuffer(CameraEvent.AfterEverything, cb);
