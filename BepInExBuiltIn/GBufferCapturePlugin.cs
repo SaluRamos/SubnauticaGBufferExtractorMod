@@ -17,7 +17,7 @@ using static RadicalLibrary.Spline;
 namespace GBufferCapture 
 {
 
-    public enum SavingType
+    public enum SavingFormat
     { 
         PNG,
         JPG
@@ -49,7 +49,7 @@ namespace GBufferCapture
         public static ConfigEntry<bool> fogEntry;
         public static ConfigEntry<int> captureWidthEntry;
         public static ConfigEntry<int> captureHeightEntry;
-        public static ConfigEntry<SavingType> savingTypeEntry;
+        public static ConfigEntry<SavingFormat> savingFormatEntry;
         public static ConfigEntry<int> jpgQualityEntry;
 
         private void Awake()
@@ -61,10 +61,11 @@ namespace GBufferCapture
             depthControlWaterLevelToleranceEntry = Config.Bind("General", "DepthControlWaterLevelTolerance", 100.0f, "the mod shaders converts depthmap to worldPos and may fail when you move camera too fast (doesnt know why exactly), increase this value to reduce/remove this errors effect in captured images");
             seeOnGUIEntry = Config.Bind("General", "seeOnGUI", true, "enable/disable mod OnGUI");
             fogEntry = Config.Bind("General", "Fog", true, "enable/disable fog without affecting captures");
+
             captureWidthEntry = Config.Bind("Capture", "CaptureWidth", 960, "Resize capture width");
             captureHeightEntry = Config.Bind("Capture", "CaptureHeight", 540, "Resize capture height");
-            savingTypeEntry = Config.Bind("Capture", "SavingType", SavingType.JPG, "Define saving type extension");
-            jpgQualityEntry = Config.Bind("Capture", "jpgQuality", 95, "jpg quality");
+            savingFormatEntry = Config.Bind("Capture", "SavingFormat", SavingFormat.JPG, "Define saving format extension");
+            jpgQualityEntry = Config.Bind("Capture", "JPG Quality", 95, "jpg quality");
 
             Logger.LogInfo($"PluginName: {PluginName}, VersionString: {VersionString} is loading...");
             harmony.PatchAll();
@@ -358,16 +359,16 @@ namespace GBufferCapture
                     }
 
                     Action<string, RenderTexture, int, int> saveFunc;
-                    switch (savingTypeEntry.Value)
+                    switch (savingFormatEntry.Value)
                     {
-                        case SavingType.PNG:
+                        case SavingFormat.PNG:
                             saveFunc = (fileName, rt, w, h) => Utils.SaveTexture(fileName, rt, w, h, ".png", t => t.EncodeToPNG());
                             break;
-                        case SavingType.JPG:
+                        case SavingFormat.JPG:
                             saveFunc = (fileName, rt, w, h) => Utils.SaveTexture(fileName, rt, w, h, ".jpg", t => t.EncodeToJPG(jpgQualityEntry.Value));
                             break;
                         default:
-                            throw new NotSupportedException($"Unsupported saving type: {savingTypeEntry.Value}");
+                            throw new NotSupportedException($"Unsupported saving type: {savingFormatEntry.Value}");
                     }
                     saveFunc($"{timestamp}_base", mainRT, captureWidth, captureHeight);
                     saveFunc($"{timestamp}_depth", depthRT, captureWidth, captureHeight);
