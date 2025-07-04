@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -163,19 +164,18 @@ namespace GBufferCapture
             return loadedShader;
         }
 
-        public static void SaveJPG(string fileName, RenderTexture rtFull, int quality = 95)
+        public static void SaveTexture(string fileName, RenderTexture rtFull, int newWidth, int newHeight, string extension, Func<Texture2D, byte[]> encoder)
         {
-            fileName = System.IO.Path.GetFileNameWithoutExtension(fileName);
-            string fullPath = System.IO.Path.Combine(GBufferCapturePlugin.captureFolder, fileName + ".jpg");
-            int newWidth = rtFull.width / 2;
-            int newHeight = rtFull.height / 2;
+            fileName = Path.GetFileNameWithoutExtension(fileName);
+            string fullPath = Path.Combine(GBufferCapturePlugin.captureFolder, fileName + extension);
             RenderTexture rtHalf = RenderTexture.GetTemporary(newWidth, newHeight, 0);
             Graphics.Blit(rtFull, rtHalf);
             Texture2D screenShot = new Texture2D(newWidth, newHeight, TextureFormat.RGB24, false);
             RenderTexture.active = rtHalf;
             screenShot.ReadPixels(new Rect(0, 0, newWidth, newHeight), 0, 0);
             screenShot.Apply();
-            byte[] bytes = screenShot.EncodeToJPG(quality);
+
+            byte[] bytes = encoder(screenShot);
             try
             {
                 File.WriteAllBytes(fullPath, bytes);
@@ -184,6 +184,7 @@ namespace GBufferCapture
             {
                 Debug.LogError($"Error in saving file: {ex.Message}");
             }
+
             UnityEngine.Object.Destroy(screenShot);
             RenderTexture.ReleaseTemporary(rtHalf);
         }

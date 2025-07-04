@@ -17,6 +17,12 @@ using static RadicalLibrary.Spline;
 namespace GBufferCapture 
 {
 
+    public enum SavingType
+    { 
+        PNG,
+        JPG
+    }
+
     [BepInPlugin(MyGUID, PluginName, VersionString)]
     public class GBufferCapturePlugin : BaseUnityPlugin
     {
@@ -27,6 +33,8 @@ namespace GBufferCapture
 
         private Camera mainCam;
         private Camera gbufferCam;
+        public int captureWidth => captureWidthEntry.Value;
+        public int captureHeight => captureHeightEntry.Value;
 
         private const string MyGUID = "com.Salu.GBufferCapture";
         private const string PluginName = "GBufferCapture";
@@ -39,6 +47,10 @@ namespace GBufferCapture
         public static ConfigEntry<float> depthControlWaterLevelToleranceEntry;
         public static ConfigEntry<bool> seeOnGUIEntry;
         public static ConfigEntry<bool> fogEntry;
+        public static ConfigEntry<int> captureWidthEntry;
+        public static ConfigEntry<int> captureHeightEntry;
+        public static ConfigEntry<SavingType> savingTypeEntry;
+        public static ConfigEntry<int> jpgQualityEntry;
 
         private void Awake()
         {
@@ -49,6 +61,10 @@ namespace GBufferCapture
             depthControlWaterLevelToleranceEntry = Config.Bind("General", "DepthControlWaterLevelTolerance", 100.0f, "the mod shaders converts depthmap to worldPos and may fail when you move camera too fast (doesnt know why exactly), increase this value to reduce/remove this errors effect in captured images");
             seeOnGUIEntry = Config.Bind("General", "seeOnGUI", true, "enable/disable mod OnGUI");
             fogEntry = Config.Bind("General", "Fog", true, "enable/disable fog without affecting captures");
+            captureWidthEntry = Config.Bind("Capture", "CaptureWidth", 960, "Resize capture width");
+            captureHeightEntry = Config.Bind("Capture", "CaptureHeight", 540, "Resize capture height");
+            savingTypeEntry = Config.Bind("Capture", "SavingType", SavingType.JPG, "Define saving type extension");
+            jpgQualityEntry = Config.Bind("Capture", "jpgQuality", 95, "jpg quality");
 
             Logger.LogInfo($"PluginName: {PluginName}, VersionString: {VersionString} is loading...");
             harmony.PatchAll();
@@ -206,6 +222,7 @@ namespace GBufferCapture
                     GUI.DrawTexture(new Rect(0, 432, 256, 144), mainRT, ScaleMode.StretchToFill, false);
                 }
             }
+            string labelText = $"Mod Core {(cb == null ? "Disabled" : "Enabled")}\nCapture {(isCapturing ? "Enabled" : "Disabled")}\nTotal Captures: {totalCaptures}\nCapture Interval: {captureIntervalEntry.Value}s";
             if (labelStyle == null)
             {
                 labelStyle = new GUIStyle(GUI.skin.label);
@@ -213,7 +230,7 @@ namespace GBufferCapture
                 labelStyle.fontSize = 20;
                 labelStyle.fontStyle = FontStyle.Bold;
             }
-            GUI.Label(new Rect(10, 950, 300, 200), $"Mod Core {(cb == null ? "Disabled" : "Enabled")}\nCapture {(isCapturing ? "Enabled" : "Disabled")}\nTotal Captures: {totalCaptures}\nCapture Interval: {captureIntervalEntry.Value}s", labelStyle);
+            GUI.Label(new Rect(10, 950, 300, 200), labelText, labelStyle);
         }
 
         private float depthControlWaterLevel => depthControlWaterLevelToleranceEntry.Value;
@@ -339,10 +356,23 @@ namespace GBufferCapture
                         mainCam.Render();
                         mainCam.targetTexture = mainCamTargetTextureRT;
                     }
-                    Utils.SaveJPG($"{timestamp}_base", mainRT);
-                    Utils.SaveJPG($"{timestamp}_depth", depthRT);
-                    Utils.SaveJPG($"{timestamp}_normal", normalRT);
-                    Utils.SaveJPG($"{timestamp}_albedo", albedoRT);
+
+                    Action<string, RenderTexture, int, int> saveFunc;
+                    switch (savingTypeEntry.Value)
+                    {
+                        case SavingType.PNG:
+                            saveFunc = (fileName, rt, w, h) => Utils.SaveTexture(fileName, rt, w, h, ".png", t => t.EncodeToPNG());
+                            break;
+                        case SavingType.JPG:
+                            saveFunc = (fileName, rt, w, h) => Utils.SaveTexture(fileName, rt, w, h, ".jpg", t => t.EncodeToJPG(jpgQualityEntry.Value));
+                            break;
+                        default:
+                            throw new NotSupportedException($"Unsupported saving type: {savingTypeEntry.Value}");
+                    }
+                    saveFunc($"{timestamp}_base", mainRT, captureWidth, captureHeight);
+                    saveFunc($"{timestamp}_depth", depthRT, captureWidth, captureHeight);
+                    saveFunc($"{timestamp}_normal", normalRT, captureWidth, captureHeight);
+                    saveFunc($"{timestamp}_albedo", albedoRT, captureWidth, captureHeight);
                     totalCaptures++;
                 }
             }
