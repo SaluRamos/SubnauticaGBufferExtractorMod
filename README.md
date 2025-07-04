@@ -11,16 +11,17 @@ the captured gbuffers are:
 - ShaderID/Segmentation per Material (NOT WORKING)  
 
 ![alt text](readme_images/gbuffers.png)  
+![alt text](readme_images/gbuffers2.png)  
 
 ## How to use  
 
 Install by extrating the mod inside "PathToSubnauticaFolder/BepInEx/plugins".  
 You can configure the mod inside the game by pressing F1 to open. (ConfigurationManager required)  
-Press F11 to enable/disable mod core.  
-Then, press F10 to start/stop recording. 
+Press F11 to toggle mod core.  
+Then, press F10 to toggle recording. 
 The captures are taken every one second by default.  
 The captures will be at "PathToSubnauticaFolder/BepInEx/plugins/GBufferCapture/captures".  
-Press NUMBER 9 to enable/disable fog without affecting captures.  
+Press NUMBER 9 to toggle fog without affecting captures.  
   
 RECOMMENDATION: I recommend you to use dev commands such as "daynightspeed" to increase light diversity in you dataset. SHIFT + ENTER opens command entry. Also, remove game GUI from captures pressing F6 hotkey.  
 

@@ -115,8 +115,8 @@ namespace GBufferCapture
             } 
             catch 
             {
-                GBufferCapturePlugin.instance.ClearCB();
                 Clear();
+                GBufferCapturePlugin.instance.ClearCB();
                 return;
             }
 

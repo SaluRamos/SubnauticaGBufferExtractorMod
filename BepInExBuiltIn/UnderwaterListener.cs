@@ -31,7 +31,6 @@ namespace GBufferCapture
                 {
                     Debug.LogWarning($"IsUnderwater = {newState}");
                     state = newState;
-                    //GBufferCapturePlugin.instance.UpdateMapsRenderDistance(newState);
                 }
             }
         }

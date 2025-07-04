@@ -79,10 +79,9 @@ namespace GBufferCapture
 
         public static bool lastFog;
 
-
         private void SetupCB()
         {
-            Debug.LogWarning("capture started");
+            Debug.LogWarning("mod core started");
             GameObject gbufferCamObj = new GameObject("GBufferCam");
             gbufferCamObj.transform.SetParent(mainCam.transform.parent);
             gbufferCamObj.transform.position = mainCam.transform.position;
@@ -253,7 +252,13 @@ namespace GBufferCapture
 
         public void ClearCB()
         {
-            Debug.LogWarning("capture stopped");
+            if (mainCam != null)
+            {
+                mainCam.targetTexture = mainCamTargetTextureRT;
+            }
+            mainCam = null;
+            fogEntry.Value = true;
+            Debug.LogWarning("mod core stopped");
             if (gbufferCam != null && cb != null)
             {
                 gbufferCam.RemoveCommandBuffer(CameraEvent.AfterEverything, cb);
@@ -263,7 +268,6 @@ namespace GBufferCapture
             cb = null;
             injectorInstance = null;
             gbufferCam = null;
-            mainCam = null;
         }
 
         void Update()
@@ -277,9 +281,12 @@ namespace GBufferCapture
                 else
                 { 
                     mainCam = FindObjectOfType<WaterSurfaceOnCamera>()?.gameObject.GetComponent<Camera>();
-                    mainCamTargetTextureRT = mainCam.targetTexture;
-                    SetupCB();
-                    SetupWaterSurfaceOnGBuffers();
+                    if (mainCam != null) //prevent activating mod core at scene loading
+                    {
+                        mainCamTargetTextureRT = mainCam.targetTexture;
+                        SetupCB();
+                        SetupWaterSurfaceOnGBuffers();
+                    }
                 }
             }
 
