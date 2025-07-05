@@ -86,7 +86,7 @@ namespace GBufferCapture
         private void RemoveScubaMaskFromGBuffers()
         {
             //most screen trash uses a component called "HideForScreenshots"
-            Transform player = GameObject.Find("Player").transform;
+            Transform player = GameObject.Find("Player")?.transform;
             if (player == null)
             {
                 return;
