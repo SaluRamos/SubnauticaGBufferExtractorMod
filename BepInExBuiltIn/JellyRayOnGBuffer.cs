@@ -11,7 +11,7 @@ namespace GBufferCapture
 {
 
     [HarmonyPatch(typeof(Creature), nameof(Creature.Start))]
-    public static class JellyRayToGBuffer_Patch
+    public static class JellyRayOnGBuffer_Patch
     {
         [HarmonyPostfix]
         public static void Postfix(Creature __instance)
@@ -41,7 +41,6 @@ namespace GBufferCapture
                     mat.SetOverrideTag("RenderType", "Opaque");
                     mat.SetFloat("_Mode", 0f);
                     mat.SetFloat("_ZWrite", 1f);
-                    Debug.Log($"Material '{mat.name}' da JellyRay modificado para renderQueue: {mat.renderQueue}");
                 }
             }
         }
