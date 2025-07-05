@@ -57,11 +57,11 @@ namespace GBufferCapture
         {
             instance = this;
             Directory.CreateDirectory(captureFolder);
-            captureIntervalEntry = Config.Bind("General", "CaptureInterval", 1.0f, new ConfigDescription("Set time between captures in seconds", new AcceptableValueRange<float>(0.0f, 10.0f)));
+            captureIntervalEntry = Config.Bind("General", "CaptureInterval", 1.0f, "Set time between captures in seconds");
             gbuffersMaxRenderDistanceEntry = Config.Bind("General", "GBufferMaxRenderDistanceUnderwater", 120.0f, "Max saw distance by gbuffers underwater, upperwater default is 1000.0f");
-            depthControlWaterLevelToleranceEntry = Config.Bind("General", "DepthControlWaterLevelTolerance", 100.0f, "the mod shaders converts depthmap to worldPos and may fail when you move camera too fast (doesnt know why exactly), increase this value to reduce/remove this errors effect in captured images");
-            seeOnGUIEntry = Config.Bind("General", "seeOnGUI", true, "enable/disable mod OnGUI");
-            fogEntry = Config.Bind("General", "Fog", true, "enable/disable fog without affecting captures");
+            depthControlWaterLevelToleranceEntry = Config.Bind("General", "DepthControlWaterLevelTolerance", 100.0f, "the mod shaders converts depthmap to worldPos and may fail when you shake camera vertically too fast, increase this value to reduce/remove this effect error in captured gbuffers");
+            seeOnGUIEntry = Config.Bind("General", "seeOnGUI", true, "toggle captures GUI");
+            fogEntry = Config.Bind("General", "Fog", true, "toggle fog without affecting captures");
 
             captureWidthEntry = Config.Bind("Capture", "CaptureWidth", 960, "Resize capture width");
             captureHeightEntry = Config.Bind("Capture", "CaptureHeight", 540, "Resize capture height");
