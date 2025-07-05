@@ -46,7 +46,9 @@ namespace GBufferCapture
         public static ConfigEntry<float> captureIntervalEntry;
         public static ConfigEntry<float> gbuffersMaxRenderDistanceEntry;
         public static ConfigEntry<float> depthControlWaterLevelToleranceEntry;
-        public static ConfigEntry<bool> seeOnGUIEntry;
+        public static ConfigEntry<bool> gbuffersPreviewEnabledEntry;
+        public static ConfigEntry<int> gbuffersPreviewSizeEntry;
+
         public static ConfigEntry<bool> fogEntry;
         public static ConfigEntry<int> captureWidthEntry;
         public static ConfigEntry<int> captureHeightEntry;
@@ -60,7 +62,8 @@ namespace GBufferCapture
             captureIntervalEntry = Config.Bind("General", "CaptureInterval", 1.0f, "Set time between captures in seconds");
             gbuffersMaxRenderDistanceEntry = Config.Bind("General", "GBufferMaxRenderDistanceUnderwater", 120.0f, "Max saw distance by gbuffers underwater, upperwater default is 1000.0f");
             depthControlWaterLevelToleranceEntry = Config.Bind("General", "DepthControlWaterLevelTolerance", 100.0f, "the mod shaders converts depthmap to worldPos and may fail when you shake camera vertically too fast, increase this value to reduce/remove this effect error in captured gbuffers");
-            seeOnGUIEntry = Config.Bind("General", "seeOnGUI", true, "toggle captures GUI");
+            gbuffersPreviewEnabledEntry = Config.Bind("General", "gbuffersPreviewEnabled", true, "toggle gbuffers captures GUI");
+            gbuffersPreviewSizeEntry = Config.Bind("General", "gbuffersPreviewSize", 256, new ConfigDescription("width of gbuffers preview", new AcceptableValueRange<int>(100, 550)));
             fogEntry = Config.Bind("General", "Fog", true, "toggle fog without affecting captures");
 
             captureWidthEntry = Config.Bind("Capture", "CaptureWidth", 960, "Resize capture width");
@@ -250,14 +253,16 @@ namespace GBufferCapture
 
         void OnGUI()
         {
-            if (cb != null && seeOnGUIEntry.Value)
+            if (cb != null && gbuffersPreviewEnabledEntry.Value && gbuffersPreviewSizeEntry.Value > 0)
             {
-                GUI.DrawTexture(new Rect(0, 0, 256, 144), depthRT, ScaleMode.StretchToFill, false);
-                GUI.DrawTexture(new Rect(0, 144, 256, 144), normalRT, ScaleMode.StretchToFill, false);
-                GUI.DrawTexture(new Rect(0, 288, 256, 144), albedoRT, ScaleMode.StretchToFill, false);
+                int previewWidth = gbuffersPreviewSizeEntry.Value;
+                int previewHeight = (int) (gbuffersPreviewSizeEntry.Value * (9.0f / 16.0f));
+                GUI.DrawTexture(new Rect(0, 0, previewWidth, previewHeight), depthRT, ScaleMode.StretchToFill, false);
+                GUI.DrawTexture(new Rect(0, previewHeight, previewWidth, previewHeight), normalRT, ScaleMode.StretchToFill, false);
+                GUI.DrawTexture(new Rect(0, previewHeight*2, previewWidth, previewHeight), albedoRT, ScaleMode.StretchToFill, false);
                 if (!fogEntry.Value)
                 { 
-                    GUI.DrawTexture(new Rect(0, 432, 256, 144), mainRT, ScaleMode.StretchToFill, false);
+                    GUI.DrawTexture(new Rect(0, previewHeight*3, previewWidth, previewHeight), mainRT, ScaleMode.StretchToFill, false);
                 }
             }
             string labelText = $"Mod Core {(cb == null ? "Disabled" : "Enabled")}\nCapture {(isCapturing ? "Enabled" : "Disabled")}\nTotal Captures: {totalCaptures}\nCapture Interval: {captureIntervalEntry.Value}s";
