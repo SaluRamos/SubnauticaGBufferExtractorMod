@@ -83,7 +83,7 @@ namespace GBufferCapture
             totalCaptures = onlyFinalRenders.Length;
         }
 
-        private void RemoveScubaMaskFromGBuffers()
+        private void RemoveScubaMask()
         {
             //most screen trash uses a component called "HideForScreenshots"
             Transform player = GameObject.Find("Player")?.transform;
@@ -97,6 +97,15 @@ namespace GBufferCapture
                 return;
             }
             scubaMask.gameObject.SetActive(false);
+        }
+
+        private void RemovePlayerBreathBubbles()
+        {
+            PlayerBreathBubbles[] bubbles = FindObjectsOfType<PlayerBreathBubbles>();
+            foreach (PlayerBreathBubbles bubbleController in bubbles)
+            { 
+                bubbleController.enabled = false;
+            }
         }
 
         public static float gbuffersMaxRenderDistance => gbuffersMaxRenderDistanceEntry.Value;
@@ -124,7 +133,8 @@ namespace GBufferCapture
 
         private void SetupCB()
         {
-            RemoveScubaMaskFromGBuffers();
+            RemovePlayerBreathBubbles();
+            RemoveScubaMask();
             Debug.LogWarning("mod core started");
             GameObject gbufferCamObj = new GameObject("GBufferCam");
             gbufferCamObj.transform.SetParent(mainCam.transform.parent);
