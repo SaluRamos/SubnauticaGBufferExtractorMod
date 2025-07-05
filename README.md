@@ -11,6 +11,7 @@ the captured gbuffers are:
   
 ![alt text](readme_images/gbuffers.png)  
 ![alt text](readme_images/gbuffers2.png)  
+![alt text](readme_images/configs.png)  
   
 ## How to use  
 Install by extrating .zip inside "PathToSubnauticaFolder/BepInEx/plugins".  
