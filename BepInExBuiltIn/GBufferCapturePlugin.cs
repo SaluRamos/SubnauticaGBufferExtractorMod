@@ -71,6 +71,15 @@ namespace GBufferCapture
             harmony.PatchAll();
             Logger.LogInfo($"PluginName: {PluginName}, VersionString: {VersionString} is loaded.");
             Log = Logger;
+
+            CountTakenCaptures();
+        }
+
+        private void CountTakenCaptures()
+        {
+            string[] files = Directory.GetFiles(captureFolder);
+            string[] onlyFinalRenders = files.Where(f => System.IO.Path.GetFileName(f).Contains("_base")).ToArray();
+            totalCaptures = onlyFinalRenders.Length;
         }
 
         public static float gbuffersMaxRenderDistance => gbuffersMaxRenderDistanceEntry.Value;
