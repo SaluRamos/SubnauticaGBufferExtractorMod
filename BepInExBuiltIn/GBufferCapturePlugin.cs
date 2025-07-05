@@ -7,6 +7,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -82,6 +83,22 @@ namespace GBufferCapture
             totalCaptures = onlyFinalRenders.Length;
         }
 
+        private void RemoveScubaMaskFromGBuffers()
+        {
+            //most screen trash uses a component called "HideForScreenshots"
+            Transform player = GameObject.Find("Player").transform;
+            if (player == null)
+            {
+                return;
+            }
+            Transform scubaMask = player.Find("camPivot/camRoot/camOffset/pdaCamPivot/SpawnPlayerMask");
+            if (scubaMask == null)
+            {
+                return;
+            }
+            scubaMask.gameObject.SetActive(false);
+        }
+
         public static float gbuffersMaxRenderDistance => gbuffersMaxRenderDistanceEntry.Value;
 
         private CommandBuffer cb;
@@ -107,6 +124,7 @@ namespace GBufferCapture
 
         private void SetupCB()
         {
+            RemoveScubaMaskFromGBuffers();
             Debug.LogWarning("mod core started");
             GameObject gbufferCamObj = new GameObject("GBufferCam");
             gbufferCamObj.transform.SetParent(mainCam.transform.parent);
