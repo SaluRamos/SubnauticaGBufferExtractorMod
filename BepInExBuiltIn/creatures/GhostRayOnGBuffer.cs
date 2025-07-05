@@ -30,7 +30,7 @@ namespace GBufferCapture
             SkinnedMeshRenderer[] renderers = ghostrayInstance.GetComponentsInChildren<SkinnedMeshRenderer>(true);
             if (renderers.Length == 0)
             {
-                Debug.LogError("ERRO CRÍTICO: Não foi possível encontrar o SkinnedMeshRenderer da GhostRay! O patch não funcionará.");
+                Debug.LogError("Cant find SkinnedMeshRenderer of GhostRay!");
                 yield break;
             }
             foreach (var renderer in renderers)

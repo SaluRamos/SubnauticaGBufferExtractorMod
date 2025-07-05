@@ -1,43 +1,43 @@
-﻿using System;
+﻿using HarmonyLib;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using HarmonyLib;
 using UnityEngine;
-using System.Collections;
 
 namespace GBufferCapture
 {
 
     [HarmonyPatch(typeof(Creature), nameof(Creature.Start))]
-    public static class JellyRayOnGBuffer_Patch
+    public static class HoopfishOnGBuffer_Patch
     {
         [HarmonyPostfix]
         public static void Postfix(Creature __instance)
         {
-            if (!(__instance is Jellyray))
+            if (!(__instance is Hoopfish))
             {
                 return;
             }
-            Jellyray jellyray = __instance as Jellyray;
-            jellyray.StartCoroutine(ApplyGbufferFix(jellyray));
+            Hoopfish hoopfish = __instance as Hoopfish;
+            hoopfish.StartCoroutine(ApplyGbufferFix(hoopfish));
         }
 
-        private static IEnumerator ApplyGbufferFix(Jellyray jellyrayInstance)
+        private static IEnumerator ApplyGbufferFix(Hoopfish hoopfishInstance)
         {
             yield return new WaitForEndOfFrame();
-            SkinnedMeshRenderer renderer = jellyrayInstance.GetComponentInChildren<SkinnedMeshRenderer>(true);
+            SkinnedMeshRenderer renderer = hoopfishInstance.GetComponentInChildren<SkinnedMeshRenderer>(true);
             if (renderer == null)
             {
-                Debug.LogError("ERRO CRÍTICO: Não foi possível encontrar o SkinnedMeshRenderer da JellyRay! O patch não funcionará.");
+                Debug.LogError("Cant find SkinnedMeshRenderer of Hoopfish!");
                 yield break;
             }
             foreach (var mat in renderer.materials)
             {
                 if (mat != null && mat.shader.name == "MarmosetUBER")
                 {
-                    mat.renderQueue = (int) UnityEngine.Rendering.RenderQueue.Geometry;
+                    mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Geometry;
                     mat.SetOverrideTag("RenderType", "Opaque");
                     mat.SetFloat("_Mode", 0f);
                     mat.SetFloat("_ZWrite", 1f);
