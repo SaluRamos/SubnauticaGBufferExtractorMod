@@ -50,7 +50,6 @@ namespace GBufferCapture
         public static ConfigEntry<bool> gbuffersPreviewEnabledEntry;
         public static ConfigEntry<int> gbuffersPreviewSizeEntry;
 
-        public static ConfigEntry<bool> fogEntry;
         public static ConfigEntry<int> captureWidthEntry;
         public static ConfigEntry<int> captureHeightEntry;
         public static ConfigEntry<SavingFormat> savingFormatEntry;
@@ -61,11 +60,10 @@ namespace GBufferCapture
             instance = this;
             Directory.CreateDirectory(captureFolder);
             captureIntervalEntry = Config.Bind("General", "CaptureInterval", 1.0f, "Set time between captures in seconds");
-            gbuffersMaxRenderDistanceEntry = Config.Bind("General", "GBufferMaxRenderDistanceUnderwater", 120.0f, "Max saw distance by gbuffers underwater, upperwater default is 1000.0f");
+            gbuffersMaxRenderDistanceEntry = Config.Bind("General", "GBufferMaxRenderDistanceUnderwater", 200.0f, "Max saw distance by gbuffers underwater, upperwater default is 1000.0f");
             depthControlWaterLevelToleranceEntry = Config.Bind("General", "DepthControlWaterLevelTolerance", 100.0f, "the mod shaders converts depthmap to worldPos and may fail when you shake camera vertically too fast, increase this value to reduce/remove this effect error in captured gbuffers");
             gbuffersPreviewEnabledEntry = Config.Bind("General", "gbuffersPreviewEnabled", true, "toggle gbuffers captures GUI");
             gbuffersPreviewSizeEntry = Config.Bind("General", "gbuffersPreviewSize", 256, new ConfigDescription("width of gbuffers preview", new AcceptableValueRange<int>(100, 550)));
-            fogEntry = Config.Bind("General", "Fog", true, "toggle fog without affecting captures");
 
             captureWidthEntry = Config.Bind("Capture", "CaptureWidth", 960, "Resize capture width");
             captureHeightEntry = Config.Bind("Capture", "CaptureHeight", 540, "Resize capture height");
@@ -115,8 +113,8 @@ namespace GBufferCapture
         public static float gbuffersMaxRenderDistance => gbuffersMaxRenderDistanceEntry.Value;
 
         private CommandBuffer cb;
+        private CommandBuffer mainCB;
 
-        private RenderTexture mainCamTargetTextureRT;
         private RenderTexture mainRT;
         private RenderTexture depthRT;
         private RenderTexture normalRT;
@@ -132,8 +130,6 @@ namespace GBufferCapture
         private Material tcdMaterial; //texture control depth
         private Shader emissionShader;
         private Material emissionMat;
-
-        public static bool lastFog;
 
         private void SetupCB()
         {
@@ -186,7 +182,7 @@ namespace GBufferCapture
             gbufferCam.depthTextureMode = DepthTextureMode.Depth;
 
             cb = new CommandBuffer();
-            cb.name = "GBuffer Capture Command Buffer";
+            cb.name = "GBuffer Command Buffer";
 
             //código base para shaderID e emissionMap
             //var renderers = FindObjectsOfType<Renderer>();
@@ -237,6 +233,11 @@ namespace GBufferCapture
             cb.Blit(BuiltinRenderTextureType.GBuffer2, normalRT, tcdMaterial);
             cb.Blit(BuiltinRenderTextureType.GBuffer0, albedoRT, tcdMaterial);
             gbufferCam.AddCommandBuffer(CameraEvent.AfterEverything, cb);
+
+            mainCB = new CommandBuffer();
+            mainCB.name = "Main Camera Command Buffer";
+            mainCB.Blit(BuiltinRenderTextureType.CameraTarget, mainRT);
+            mainCam.AddCommandBuffer(CameraEvent.AfterEverything, mainCB);
         }
 
         private WaterGBufferInjector injectorInstance;
@@ -261,10 +262,7 @@ namespace GBufferCapture
                 GUI.DrawTexture(new Rect(0, 0, previewWidth, previewHeight), depthRT, ScaleMode.StretchToFill, false);
                 GUI.DrawTexture(new Rect(0, previewHeight, previewWidth, previewHeight), normalRT, ScaleMode.StretchToFill, false);
                 GUI.DrawTexture(new Rect(0, previewHeight*2, previewWidth, previewHeight), albedoRT, ScaleMode.StretchToFill, false);
-                if (!fogEntry.Value)
-                { 
-                    GUI.DrawTexture(new Rect(0, previewHeight*3, previewWidth, previewHeight), mainRT, ScaleMode.StretchToFill, false);
-                }
+                //GUI.DrawTexture(new Rect(0, previewHeight*3, previewWidth, previewHeight), mainRT, ScaleMode.StretchToFill, false);
             }
             string labelText = $"Mod Core {(cb == null ? "Disabled" : "Enabled")}\nCapture {(isCapturing ? "Enabled" : "Disabled")}\nTotal Captures: {totalCaptures}\nCapture Interval: {captureIntervalEntry.Value}s";
             if (labelStyle == null)
@@ -314,21 +312,23 @@ namespace GBufferCapture
         public void ClearCB()
         {
             Debug.LogWarning("mod core stopped");
-            if (mainCam != null)
+            if (mainCam != null && mainCB != null)
             {
-                mainCam.targetTexture = mainCamTargetTextureRT;
+                mainCam.RemoveCommandBuffer(CameraEvent.AfterEverything, mainCB);
+                GameObject.DestroyImmediate(mainCam.gameObject);
             }
             mainCam = null;
-            fogEntry.Value = true;
             if (gbufferCam != null && cb != null)
             {
                 gbufferCam.RemoveCommandBuffer(CameraEvent.AfterEverything, cb);
                 GameObject.DestroyImmediate(gbufferCam.gameObject);
             }
+            gbufferCam = null;
             cb?.Release();
             cb = null;
             injectorInstance = null;
-            gbufferCam = null;
+            mainCB?.Release();
+            mainCB = null;
         }
 
         void Update()
@@ -344,7 +344,6 @@ namespace GBufferCapture
                     mainCam = FindObjectOfType<WaterSurfaceOnCamera>()?.gameObject.GetComponent<Camera>();
                     if (mainCam != null) //prevent activating mod core at scene loading
                     {
-                        mainCamTargetTextureRT = mainCam.targetTexture;
                         SetupCB();
                         SetupWaterSurfaceOnGBuffers();
                     }
@@ -360,29 +359,6 @@ namespace GBufferCapture
                 //Utils.ReplaceShader("UWE/Terrain/Triplanar", "Triplanar");
             }
 
-            if (Input.GetKeyDown(KeyCode.Alpha9)) 
-            {
-                fogEntry.Value = !fogEntry.Value;
-            }
-
-            if (lastFog != fogEntry.Value && cb != null)
-            {
-                if (!fogEntry.Value)
-                {
-                    mainCam.targetTexture = mainRT;
-                }
-                else
-                {
-                    mainCam.targetTexture = mainCamTargetTextureRT;
-                }
-                lastFog = fogEntry.Value;
-            }
-            
-            if (cb == null)
-            { 
-                lastFog = !fogEntry.Value;
-            }
-
             if (Input.GetKeyDown(KeyCode.F10))
             {
                 isCapturing = !isCapturing;
@@ -396,13 +372,6 @@ namespace GBufferCapture
                 {
                     timer = 0f;
                     string timestamp = $"{System.DateTime.Now:yyyy-MM-dd_HH-mm-ss-fff}";
-                    if (fogEntry.Value)
-                    {
-                        mainCam.targetTexture = mainRT;
-                        mainCam.Render();
-                        mainCam.targetTexture = mainCamTargetTextureRT;
-                    }
-
                     Action<string, RenderTexture, int, int> saveFunc;
                     switch (savingFormatEntry.Value)
                     {
