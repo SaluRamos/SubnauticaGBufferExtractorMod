@@ -113,7 +113,7 @@ namespace GBufferCapture
             totalCaptures = onlyFinalRenders.Length;
         }
 
-        private void RemoveScubaMask()
+        private void ToggleScubaMask(bool active)
         {
             //most screen trash uses a component called "HideForScreenshots"
             Transform player = GameObject.Find("Player")?.transform;
@@ -126,19 +126,19 @@ namespace GBufferCapture
             {
                 return;
             }
-            scubaMask.gameObject.SetActive(false);
+            scubaMask.gameObject.SetActive(active);
         }
 
-        private void RemovePlayerBreathBubbles()
+        private void TogglePlayerBreathBubbles(bool active)
         {
             PlayerBreathBubbles[] bubbles = FindObjectsOfType<PlayerBreathBubbles>();
             foreach (PlayerBreathBubbles bubbleController in bubbles)
             { 
-                bubbleController.enabled = false;
+                bubbleController.enabled = active;
             }
         }
 
-        private void RemoveWaterParticlesSpawner()
+        private void ToggleWaterParticlesSpawner(bool active)
         {
             Transform player = GameObject.Find("Player")?.transform;
             if (player == null)
@@ -151,7 +151,7 @@ namespace GBufferCapture
                 Debug.LogError("WaterParticlesSpawner not found");
                 return;
             }
-            waterParticles.gameObject.SetActive(false);
+            waterParticles.gameObject.SetActive(active);
         }
 
         public static float gbuffersMaxRenderDistance => gbuffersMaxRenderDistanceEntry.Value;
@@ -187,9 +187,9 @@ namespace GBufferCapture
         private void SetupCB()
         {
             Debug.LogWarning("mod core started");
-            RemovePlayerBreathBubbles();
-            RemoveScubaMask();
-            RemoveWaterParticlesSpawner();
+            ToggleScubaMask(!removeScubaMaskEntry.Value);
+            TogglePlayerBreathBubbles(!removeBreathBubblesEntry.Value);
+            ToggleWaterParticlesSpawner(!removeWaterParticlesEntry.Value);
             gbufferCam = CreateNewCam("gBufferCam", mainCam);
             InjectCustomWaterSurface(gbufferCam);
 
