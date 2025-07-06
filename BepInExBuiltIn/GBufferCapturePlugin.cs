@@ -135,14 +135,10 @@ namespace GBufferCapture
         private RenderTexture emissionRT;
         private RenderTexture idRT;
 
-        private Shader midShader;
-        private Material midMaterial;
         private Shader texControlDepthShader;
         private Material mcdMaterial; //monocromatic control depth
         private Shader monocromaticControlDepthShader;
         private Material tcdMaterial; //texture control depth
-        private Shader emissionShader;
-        private Material emissionMat;
 
         private void SetupCB()
         {
@@ -177,72 +173,19 @@ namespace GBufferCapture
 
             if (monocromaticControlDepthShader == null)
             { 
-                monocromaticControlDepthShader = Utils.LoadExternalShader("DepthPost");
+                monocromaticControlDepthShader = Utils.LoadExternalShader("MonocromaticFogController");
                 mcdMaterial = new Material(monocromaticControlDepthShader);
                 mcdMaterial.hideFlags = HideFlags.HideAndDontSave;
 
-                texControlDepthShader = Utils.LoadExternalShader("NormalPost");
+                texControlDepthShader = Utils.LoadExternalShader("TextureFogController");
                 tcdMaterial = new Material(texControlDepthShader);
                 tcdMaterial.hideFlags = HideFlags.HideAndDontSave;
-
-                emissionShader = Utils.LoadExternalShader("EmissionMap");
-                emissionMat = new Material(emissionShader);
-                emissionMat.hideFlags = HideFlags.HideAndDontSave;
-
-                midShader = Utils.LoadExternalShader("MaterialID");
-                midMaterial = new Material(midShader);
-                midMaterial.hideFlags = HideFlags.HideAndDontSave;
             }
 
             gbufferCam.depthTextureMode = DepthTextureMode.Depth;
 
             cb = new CommandBuffer();
             cb.name = "GBuffer Command Buffer";
-
-            //código base para shaderID e emissionMap
-            //var renderers = FindObjectsOfType<Renderer>();
-
-            //cb.SetRenderTarget(idRT);
-            //cb.ClearRenderTarget(true, true, Color.black);
-            //var props = new MaterialPropertyBlock();
-            //foreach (var rend in renderers)
-            //{
-            //    if (rend.sharedMaterial == null)
-            //    { 
-            //        Debug.Log($"pulando renderer {rend}");
-            //        continue;
-            //    }
-            //    if (rend is ParticleSystemRenderer)
-            //    { 
-            //        continue;
-            //    }
-            //    props.Clear();
-            //    int matID = rend.sharedMaterial.GetInstanceID();
-            //    props.SetFloat("_MaterialID", matID);
-            //    rend.SetPropertyBlock(props);
-            //    cb.DrawRenderer(rend, midMaterial);
-            //}
-
-            //cb.SetRenderTarget(emissionRT);
-            //cb.ClearRenderTarget(true, true, Color.black);
-            //foreach (var rend in renderers)
-            //{
-                // uma das idéias para capturar o emissionMap é obter todos os gameObjects que contem Light e iterar sobre objetos parentes com mesh, pois estes serão a fonte de luz, a esses objetos se aplica o material
-            //    if (rend.sharedMaterial == null)
-            //    {
-            //        Debug.Log($"pulando renderer {rend}");
-            //        continue;
-            //    }
-            //    if (rend is ParticleSystemRenderer)
-            //    {
-            //        continue;
-            //    }
-            //    var mat = rend.sharedMaterial;
-            //    if (!mat.HasProperty("_EmissionMap"))
-            //    { 
-            //        cb.DrawRenderer(rend, emissionMat);
-            //    }
-            //}
 
             cb.Blit(BuiltinRenderTextureType.CameraTarget, depthRT, mcdMaterial);
             cb.Blit(BuiltinRenderTextureType.GBuffer2, normalRT, tcdMaterial);
