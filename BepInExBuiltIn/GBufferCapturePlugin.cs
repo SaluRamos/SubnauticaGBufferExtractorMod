@@ -257,7 +257,7 @@ namespace GBufferCapture
             if (cb != null && gbuffersPreviewEnabledEntry.Value && gbuffersPreviewSizeEntry.Value > 0)
             {
                 int previewWidth = gbuffersPreviewSizeEntry.Value;
-                int previewHeight = (int) (gbuffersPreviewSizeEntry.Value * (9.0f / 16.0f));
+                int previewHeight = (int) Math.Ceiling(gbuffersPreviewSizeEntry.Value * (9.0f / 16.0f));
                 GUI.DrawTexture(new Rect(0, 0, previewWidth, previewHeight), depthRT, ScaleMode.StretchToFill, false);
                 GUI.DrawTexture(new Rect(0, previewHeight, previewWidth, previewHeight), normalRT, ScaleMode.StretchToFill, false);
                 GUI.DrawTexture(new Rect(0, previewHeight*2, previewWidth, previewHeight), albedoRT, ScaleMode.StretchToFill, false);
