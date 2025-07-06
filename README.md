@@ -20,7 +20,6 @@ Press F11 to toggle mod core.
 Then, press F10 to toggle recording. 
 The captures are taken every one second by default.  
 The captures will be at "PathToSubnauticaFolder/BepInEx/plugins/GBufferCapture/captures".  
-Press NUMBER 9 to toggle fog without affecting captures.  
   
 OBSERVATIONS:  
 - Scuba mask are automatically disabled.  
