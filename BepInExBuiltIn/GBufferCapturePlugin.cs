@@ -54,6 +54,11 @@ namespace GBufferCapture
         public static ConfigEntry<int> captureHeightEntry;
         public static ConfigEntry<SavingFormat> savingFormatEntry;
         public static ConfigEntry<int> jpgQualityEntry;
+        public static ConfigEntry<bool> saveDepthEntry;
+        public static ConfigEntry<bool> saveNormalEntry;
+        public static ConfigEntry<bool> saveAlbedoEntry;
+        public static ConfigEntry<bool> saveFinalRenderEntry;
+
 
         private void Awake()
         {
@@ -69,6 +74,10 @@ namespace GBufferCapture
             captureHeightEntry = Config.Bind("Capture", "CaptureHeight", 540, "Resize capture height");
             savingFormatEntry = Config.Bind("Capture", "SavingFormat", SavingFormat.JPG, "Define saving format extension");
             jpgQualityEntry = Config.Bind("Capture", "JPG Quality", 95, "jpg quality");
+            saveDepthEntry = Config.Bind("Capture", "saveDepthMap", true, "toggle saving depth map");
+            saveNormalEntry = Config.Bind("Capture", "saveNormalMap", true, "toggle saving normal map");
+            saveAlbedoEntry = Config.Bind("Capture", "saveAlbedoMap", true, "toggle saving albedo map");
+            saveFinalRenderEntry = Config.Bind("Capture", "saveFinalRender", true, "toggle saving final render");
 
             Logger.LogInfo($"PluginName: {PluginName}, VersionString: {VersionString} is loading...");
             harmony.PatchAll();
@@ -257,11 +266,25 @@ namespace GBufferCapture
         {
             if (cb != null && gbuffersPreviewEnabledEntry.Value && gbuffersPreviewSizeEntry.Value > 0)
             {
+                int stackPos = 0;
                 int previewWidth = gbuffersPreviewSizeEntry.Value;
                 int previewHeight = (int) Math.Ceiling(gbuffersPreviewSizeEntry.Value * (9.0f / 16.0f));
-                GUI.DrawTexture(new Rect(0, 0, previewWidth, previewHeight), depthRT, ScaleMode.StretchToFill, false);
-                GUI.DrawTexture(new Rect(0, previewHeight, previewWidth, previewHeight), normalRT, ScaleMode.StretchToFill, false);
-                GUI.DrawTexture(new Rect(0, previewHeight*2, previewWidth, previewHeight), albedoRT, ScaleMode.StretchToFill, false);
+
+                if (saveDepthEntry.Value)
+                { 
+                    GUI.DrawTexture(new Rect(0, 0, previewWidth, previewHeight), depthRT, ScaleMode.StretchToFill, false);
+                    stackPos++;
+                }
+                if (saveNormalEntry.Value)
+                { 
+                    GUI.DrawTexture(new Rect(0, previewHeight*stackPos, previewWidth, previewHeight), normalRT, ScaleMode.StretchToFill, false);
+                    stackPos++;
+                }
+                if (saveAlbedoEntry.Value)
+                { 
+                    GUI.DrawTexture(new Rect(0, previewHeight*stackPos, previewWidth, previewHeight), albedoRT, ScaleMode.StretchToFill, false);
+                    stackPos++;
+                }
                 //GUI.DrawTexture(new Rect(0, previewHeight*3, previewWidth, previewHeight), mainRT, ScaleMode.StretchToFill, false);
             }
             string labelText = $"Mod Core {(cb == null ? "Disabled" : "Enabled")}\nCapture {(isCapturing ? "Enabled" : "Disabled")}\nTotal Captures: {totalCaptures}\nCapture Interval: {captureIntervalEntry.Value}s";
@@ -384,10 +407,10 @@ namespace GBufferCapture
                         default:
                             throw new NotSupportedException($"Unsupported saving type: {savingFormatEntry.Value}");
                     }
-                    saveFunc($"{timestamp}_base", mainRT, captureWidth, captureHeight);
-                    saveFunc($"{timestamp}_depth", depthRT, captureWidth, captureHeight);
-                    saveFunc($"{timestamp}_normal", normalRT, captureWidth, captureHeight);
-                    saveFunc($"{timestamp}_albedo", albedoRT, captureWidth, captureHeight);
+                    if (saveDepthEntry.Value) saveFunc($"{timestamp}_depth", depthRT, captureWidth, captureHeight);
+                    if (saveNormalEntry.Value) saveFunc($"{timestamp}_normal", normalRT, captureWidth, captureHeight); 
+                    if (saveAlbedoEntry.Value) saveFunc($"{timestamp}_albedo", albedoRT, captureWidth, captureHeight);
+                    if (saveFinalRenderEntry.Value) saveFunc($"{timestamp}_base", mainRT, captureWidth, captureHeight);
                     totalCaptures++;
                 }
             }
