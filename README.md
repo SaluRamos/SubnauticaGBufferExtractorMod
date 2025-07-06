@@ -1,5 +1,5 @@
 ## Objective
-capture the g-buffers of Subnautica (and Subnautica Below Zero) and save them in JPG format to create a rich dataset.  
+capture the g-buffers of Subnautica (and Subnautica Below Zero) and save them in JPG/PNG format to create a rich dataset.  
   
 the captured gbuffers are:  
 - Final Render (WORKING)  
