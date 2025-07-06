@@ -69,7 +69,7 @@ Shader "Hidden/DepthPost"
                 float mask;
                 if (wpos.y > _WaterLevel)
                 {
-                    mask = 1.0 - step(1000.0, depth);
+                    mask = 1.0 - step(2000.0, depth);
                 }
                 else
                 {

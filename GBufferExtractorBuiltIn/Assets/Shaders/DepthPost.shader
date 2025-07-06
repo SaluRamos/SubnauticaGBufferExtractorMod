@@ -63,7 +63,7 @@ Shader "Hidden/DepthPost"
 
                 if (wpos.y > _WaterLevel)
                 {
-                    float clippedDepth = saturate(worldDepth / 1000.0); //saturate restringe de 0 a 1
+                    float clippedDepth = saturate(worldDepth / 2000.0); //saturate restringe de 0 a 1
                     return fixed4(clippedDepth, clippedDepth, clippedDepth, 1.0);
                 }
                 else
