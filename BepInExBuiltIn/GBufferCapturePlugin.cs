@@ -58,6 +58,7 @@ namespace GBufferCapture
         public static ConfigEntry<bool> saveNormalEntry;
         public static ConfigEntry<bool> saveAlbedoEntry;
         public static ConfigEntry<bool> saveFinalRenderEntry;
+        public static ConfigEntry<bool> saveSpecularEntry;
 
 
         private void Awake()
@@ -68,7 +69,7 @@ namespace GBufferCapture
             gbuffersMaxRenderDistanceEntry = Config.Bind("General", "GBufferMaxRenderDistanceUnderwater", 200.0f, "Max saw distance by gbuffers underwater, upperwater default is 1000.0f");
             depthControlWaterLevelToleranceEntry = Config.Bind("General", "DepthControlWaterLevelTolerance", 100.0f, "the mod shaders converts depthmap to worldPos and may fail when you shake camera vertically too fast, increase this value to reduce/remove this effect error in captured gbuffers");
             gbuffersPreviewEnabledEntry = Config.Bind("General", "gbuffersPreviewEnabled", true, "toggle gbuffers captures GUI");
-            gbuffersPreviewSizeEntry = Config.Bind("General", "gbuffersPreviewSize", 256, new ConfigDescription("width of gbuffers preview", new AcceptableValueRange<int>(100, 550)));
+            gbuffersPreviewSizeEntry = Config.Bind("General", "gbuffersPreviewSize", 256, new ConfigDescription("width of gbuffers preview", new AcceptableValueRange<int>(100, 423)));
 
             captureWidthEntry = Config.Bind("Capture", "CaptureWidth", 960, "Resize capture width");
             captureHeightEntry = Config.Bind("Capture", "CaptureHeight", 540, "Resize capture height");
@@ -78,6 +79,7 @@ namespace GBufferCapture
             saveNormalEntry = Config.Bind("Capture", "saveNormalMap", true, "toggle saving normal map");
             saveAlbedoEntry = Config.Bind("Capture", "saveAlbedoMap", true, "toggle saving albedo map");
             saveFinalRenderEntry = Config.Bind("Capture", "saveFinalRender", true, "toggle saving final render");
+            saveSpecularEntry = Config.Bind("Capture", "saveSpecularMap", true, "toggle saving specular map");
 
             Logger.LogInfo($"PluginName: {PluginName}, VersionString: {VersionString} is loading...");
             harmony.PatchAll();
@@ -123,11 +125,13 @@ namespace GBufferCapture
 
         private CommandBuffer cb;
         private CommandBuffer mainCB;
+        private CommandBuffer specularCB;
 
         private RenderTexture mainRT;
         private RenderTexture depthRT;
         private RenderTexture normalRT;
         private RenderTexture albedoRT;
+        private RenderTexture specularRT;
         private RenderTexture emissionRT;
         private RenderTexture idRT;
 
@@ -163,6 +167,8 @@ namespace GBufferCapture
                 normalRT.Create();
                 albedoRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
                 albedoRT.Create();
+                specularRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
+                specularRT.Create();
                 emissionRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGB32);
                 emissionRT.Create();
                 idRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGB32);
@@ -247,6 +253,11 @@ namespace GBufferCapture
             mainCB.name = "Main Camera Command Buffer";
             mainCB.Blit(BuiltinRenderTextureType.CameraTarget, mainRT);
             mainCam.AddCommandBuffer(CameraEvent.AfterEverything, mainCB);
+
+            specularCB = new CommandBuffer();
+            specularCB.name = "Specular Command Buffer";
+            specularCB.Blit(BuiltinRenderTextureType.GBuffer1, specularRT);
+            mainCam.AddCommandBuffer(CameraEvent.AfterGBuffer, specularCB);
         }
 
         private WaterGBufferInjector injectorInstance;
@@ -281,8 +292,13 @@ namespace GBufferCapture
                     stackPos++;
                 }
                 if (saveAlbedoEntry.Value)
-                { 
+                {
                     GUI.DrawTexture(new Rect(0, previewHeight*stackPos, previewWidth, previewHeight), albedoRT, ScaleMode.StretchToFill, false);
+                    stackPos++;
+                }
+                if (saveSpecularEntry.Value)
+                {
+                    GUI.DrawTexture(new Rect(0, previewHeight*stackPos, previewWidth, previewHeight), specularRT, ScaleMode.StretchToFill, false);
                     stackPos++;
                 }
                 //GUI.DrawTexture(new Rect(0, previewHeight*3, previewWidth, previewHeight), mainRT, ScaleMode.StretchToFill, false);
@@ -338,6 +354,7 @@ namespace GBufferCapture
             if (mainCam != null && mainCB != null)
             {
                 mainCam.RemoveCommandBuffer(CameraEvent.AfterEverything, mainCB);
+                mainCam.RemoveCommandBuffer(CameraEvent.AfterGBuffer, specularCB);
                 GameObject.DestroyImmediate(mainCam.gameObject);
             }
             mainCam = null;
@@ -347,11 +364,17 @@ namespace GBufferCapture
                 GameObject.DestroyImmediate(gbufferCam.gameObject);
             }
             gbufferCam = null;
+
             cb?.Release();
             cb = null;
-            injectorInstance = null;
+
             mainCB?.Release();
             mainCB = null;
+
+            specularCB?.Release();
+            specularCB = null;
+
+            injectorInstance = null;
         }
 
         void Update()
@@ -376,7 +399,7 @@ namespace GBufferCapture
             if (Input.GetKeyDown(KeyCode.Alpha0))
             {
                 //Utils.DumpUniqueMaterials();
-                Utils.InvestigateCameraNeighborObjects();
+                //Utils.InvestigateCameraNeighborObjects();
                 //Utils.InvestigateCameraColliderCenterObject();
                 //Utils.ReplaceShader("UWE/Terrain/Triplanar with Capping", "TriplanarWithCapping");
                 //Utils.ReplaceShader("UWE/Terrain/Triplanar", "Triplanar");
@@ -411,6 +434,7 @@ namespace GBufferCapture
                     if (saveNormalEntry.Value) saveFunc($"{timestamp}_normal", normalRT, captureWidth, captureHeight); 
                     if (saveAlbedoEntry.Value) saveFunc($"{timestamp}_albedo", albedoRT, captureWidth, captureHeight);
                     if (saveFinalRenderEntry.Value) saveFunc($"{timestamp}_base", mainRT, captureWidth, captureHeight);
+                    if (saveSpecularEntry.Value) saveFunc($"{timestamp}_specular", specularRT, captureWidth, captureHeight);
                     totalCaptures++;
                 }
             }

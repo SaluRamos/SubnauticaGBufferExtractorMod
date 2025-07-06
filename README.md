@@ -6,6 +6,7 @@ the captured gbuffers are:
 - World Normal Map (WORKING)  
 - Depth Map (WORKING)  
 - Albedo Map (WORKING)  
+- Specular Map (WORKING)  
 - Emission Map (NOT WORKING)  
 - ShaderID/Segmentation per Material (NOT WORKING)  
   

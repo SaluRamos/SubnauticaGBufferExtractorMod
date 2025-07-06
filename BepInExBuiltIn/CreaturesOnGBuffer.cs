@@ -69,6 +69,9 @@ namespace GBufferCapture.creatures
                             mat.SetOverrideTag("RenderType", "Opaque");
                             mat.SetFloat("_Mode", 0f);
                             mat.SetFloat("_ZWrite", 1f);
+                            if (mat.HasProperty("_GlowColor")) mat.SetColor("_GlowColor", Color.black);
+                            if (mat.HasProperty("_GlowStrength")) mat.SetFloat("_GlowStrength", 0f);
+                            if (mat.HasProperty("_GlowStrengthNight")) mat.SetFloat("_GlowStrengthNight", 0f);
                         }
                     }
                 }
