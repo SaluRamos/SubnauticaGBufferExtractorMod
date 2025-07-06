@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 
 namespace GBufferCapture
@@ -8,8 +9,11 @@ namespace GBufferCapture
     internal class Utils
     {
 
+        private static int chunkCounter = 0;
+        private static List<GameObject> countedGameObjects = new List<GameObject>();
+
         //used to inspect terrain patches
-        public static void InvestigateCameraColliderCenterObject()
+        public static void InvestigateCameraCenterColliderObject()
         {
             Camera mainCam = UnityEngine.Object.FindObjectOfType<WaterSurfaceOnCamera>()?.gameObject.GetComponent<Camera>();
             Ray ray = mainCam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
@@ -32,43 +36,23 @@ namespace GBufferCapture
                         closestDistances[name] = dist;
                     }
                 }
-                hitObject.name = hitObject.name + "1234";
+                if (!countedGameObjects.Contains(hitObject))
+                {
+                    hitObject.name = hitObject.name + chunkCounter;
+                    countedGameObjects.Add(hitObject);
+                }
                 foreach (var kvp in closestByName)
                 {
                     GameObject target = kvp.Value;
-                    target.name = target.name + "1234";
-                }
-            }
-        }
-
-        public static void InvestigateCameraNeighborObjects()
-        {
-            Camera mainCam = UnityEngine.Object.FindObjectOfType<WaterSurfaceOnCamera>()?.gameObject.GetComponent<Camera>();
-            Player player = UnityEngine.Object.FindObjectOfType<Player>();
-            GameObject playerObject = (player != null) ? player.gameObject : null;
-            float radius = 3.0f;
-            Vector3 center = mainCam.transform.position;
-            GameObject[] allGameObjects = UnityEngine.Object.FindObjectsOfType<GameObject>();
-            Debug.Log("----------------------------------------------------");
-            foreach (GameObject go in allGameObjects)
-            {
-                if (playerObject != null && (go == playerObject || go.transform.IsChildOf(playerObject.transform)))
-                {
-                    continue;
-                }
-                if (Vector3.Distance(go.transform.position, center) <= radius)
-                {
-                    Debug.Log($"[Object]: {go.name}");
-                    foreach (Component component in go.GetComponents<Component>())
+                    if (!countedGameObjects.Contains(target))
                     {
-                        if (component != null)
-                        {
-                            Debug.Log($"  - {component.GetType().FullName}");
-                        }
+                        target.name = target.name + chunkCounter;
+                        countedGameObjects.Add(target);
                     }
                 }
+                chunkCounter++;
+                Debug.Log($"Hit object: {hitObject.name} at position {hitObject.transform.position} and renamed with id {chunkCounter}");
             }
-            Debug.Log("----------------------------------------------------");
         }
 
         public static List<Material> uniqueMaterials = new List<Material>();

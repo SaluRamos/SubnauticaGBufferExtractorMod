@@ -4,11 +4,13 @@ capture the g-buffers of Subnautica (and Subnautica Below Zero) and save them in
 the captured gbuffers are:  
 - Final Render (WORKING)  
 - World Normal Map (WORKING)  
+- Local Normal Map (WORKING)  
 - Depth Map (WORKING)  
 - Albedo Map (WORKING)  
 - Specular Map (WORKING)  
-- Emission Map (NOT WORKING)  
-- ShaderID/Segmentation per Material (NOT WORKING)  
+- Ambient Occlusion (WORKING)  
+- Emission Map (NOT SUPPORTED YET)  
+- ShaderID/Segmentation per Material (NOT SUPPORTED YET)  
   
 ![alt text](readme_images/gbuffers.png)  
 ![alt text](readme_images/gbuffers2.png)  

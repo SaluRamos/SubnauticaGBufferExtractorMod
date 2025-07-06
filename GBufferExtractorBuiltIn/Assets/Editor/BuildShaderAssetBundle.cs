@@ -27,10 +27,7 @@ public class BuildShaderAssetBundle
         }
         Debug.Log("Nenhum erro de importação encontrado. Iniciando o build...");
 
-        
-
         AssetBundleBuild[] buildMap = new AssetBundleBuild[1];
-
 
         foreach (string file in shaderFiles)
         {
@@ -38,7 +35,8 @@ public class BuildShaderAssetBundle
         }
 
         buildMap[0].assetBundleName = "bundle";
-        buildMap[0].assetNames = shaderFiles.Select(path => path.Replace('\\', '/')).ToArray();
+        buildMap[0].assetNames = shaderFiles.Select(path => path.Replace('\\', '/'))
+        .ToArray();
 
         Directory.CreateDirectory(DepthMapPost.assetBundleFolderPath);
 

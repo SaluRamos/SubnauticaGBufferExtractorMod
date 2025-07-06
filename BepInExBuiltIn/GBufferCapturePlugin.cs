@@ -9,8 +9,10 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
+using System.Runtime.Remoting.Contexts;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.PostProcessing;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 using static HandReticle;
@@ -44,42 +46,57 @@ namespace GBufferCapture
         private static readonly Harmony harmony = new Harmony(MyGUID);
         public static ManualLogSource Log = new ManualLogSource(PluginName);
 
-        public static ConfigEntry<float> captureIntervalEntry;
         public static ConfigEntry<float> gbuffersMaxRenderDistanceEntry;
         public static ConfigEntry<float> depthControlWaterLevelToleranceEntry;
+
         public static ConfigEntry<bool> gbuffersPreviewEnabledEntry;
         public static ConfigEntry<int> gbuffersPreviewSizeEntry;
 
+        public static ConfigEntry<float> captureIntervalEntry;
         public static ConfigEntry<int> captureWidthEntry;
         public static ConfigEntry<int> captureHeightEntry;
         public static ConfigEntry<SavingFormat> savingFormatEntry;
         public static ConfigEntry<int> jpgQualityEntry;
+
         public static ConfigEntry<bool> saveDepthEntry;
-        public static ConfigEntry<bool> saveNormalEntry;
+        public static ConfigEntry<bool> saveWorldNormalEntry;
+        public static ConfigEntry<bool> saveLocalNormalEntry;
         public static ConfigEntry<bool> saveAlbedoEntry;
         public static ConfigEntry<bool> saveFinalRenderEntry;
         public static ConfigEntry<bool> saveSpecularEntry;
+        public static ConfigEntry<bool> saveAOEntry;
 
+        public static ConfigEntry<bool> removeScubaMaskEntry;
+        public static ConfigEntry<bool> removeBreathBubblesEntry;
+        public static ConfigEntry<bool> removeWaterParticlesEntry;
 
         private void Awake()
         {
             instance = this;
             Directory.CreateDirectory(captureFolder);
-            captureIntervalEntry = Config.Bind("General", "CaptureInterval", 1.0f, "Set time between captures in seconds");
-            gbuffersMaxRenderDistanceEntry = Config.Bind("General", "GBufferMaxRenderDistanceUnderwater", 200.0f, "Max saw distance by gbuffers underwater, upperwater default is 1000.0f");
-            depthControlWaterLevelToleranceEntry = Config.Bind("General", "DepthControlWaterLevelTolerance", 100.0f, "the mod shaders converts depthmap to worldPos and may fail when you shake camera vertically too fast, increase this value to reduce/remove this effect error in captured gbuffers");
-            gbuffersPreviewEnabledEntry = Config.Bind("General", "gbuffersPreviewEnabled", true, "toggle gbuffers captures GUI");
-            gbuffersPreviewSizeEntry = Config.Bind("General", "gbuffersPreviewSize", 256, new ConfigDescription("width of gbuffers preview", new AcceptableValueRange<int>(100, 423)));
+            gbuffersMaxRenderDistanceEntry = Config.Bind("Rendering", "GBufferMaxRenderDistanceUnderwater", 200.0f, "Max saw distance by gbuffers underwater, upperwater default is 1000.0f");
+            depthControlWaterLevelToleranceEntry = Config.Bind("Rendering", "DepthControlWaterLevelTolerance", 100.0f, "the mod shaders converts depthmap to worldPos and may fail when you shake camera vertically too fast, increase this value to reduce/remove this effect error in captured gbuffers");
 
+            gbuffersPreviewEnabledEntry = Config.Bind("Gui", "gbuffersPreviewEnabled", true, "toggle gbuffers captures GUI");
+            gbuffersPreviewSizeEntry = Config.Bind("Gui", "gbuffersPreviewSize", 256, new ConfigDescription("width of gbuffers preview", new AcceptableValueRange<int>(100, 423)));
+
+            captureIntervalEntry = Config.Bind("Capture", "CaptureInterval", 1.0f, "Set time between captures in seconds");
             captureWidthEntry = Config.Bind("Capture", "CaptureWidth", 960, "Resize capture width");
             captureHeightEntry = Config.Bind("Capture", "CaptureHeight", 540, "Resize capture height");
             savingFormatEntry = Config.Bind("Capture", "SavingFormat", SavingFormat.JPG, "Define saving format extension");
             jpgQualityEntry = Config.Bind("Capture", "JPG Quality", 95, "jpg quality");
+
             saveDepthEntry = Config.Bind("Capture", "saveDepthMap", true, "toggle saving depth map");
-            saveNormalEntry = Config.Bind("Capture", "saveNormalMap", true, "toggle saving normal map");
+            saveWorldNormalEntry = Config.Bind("Capture", "saveWorldNormalMap", true, "toggle saving world normal map");
+            saveLocalNormalEntry = Config.Bind("Capture", "saveLocalNormalMap", false, "toggle saving local normal map");
             saveAlbedoEntry = Config.Bind("Capture", "saveAlbedoMap", true, "toggle saving albedo map");
             saveFinalRenderEntry = Config.Bind("Capture", "saveFinalRender", true, "toggle saving final render");
             saveSpecularEntry = Config.Bind("Capture", "saveSpecularMap", true, "toggle saving specular map");
+            saveAOEntry = Config.Bind("Capture", "saveAmbientOcclusionMap", true, "toggle saving ambient occlusion map");
+
+            removeScubaMaskEntry = Config.Bind("Screen Cleaner", "removeScubaMask", true, "toggle remove scuba mask");
+            removeBreathBubblesEntry = Config.Bind("Screen Cleaner", "removeBreathBubbles", true, "toggle breath bubbles");
+            removeWaterParticlesEntry = Config.Bind("Screen Cleaner", "removeWaterParticles", true, "toggle water particles");
 
             Logger.LogInfo($"PluginName: {PluginName}, VersionString: {VersionString} is loading...");
             harmony.PatchAll();
@@ -121,54 +138,77 @@ namespace GBufferCapture
             }
         }
 
+        private void RemoveWaterParticlesSpawner()
+        {
+            Transform player = GameObject.Find("Player")?.transform;
+            if (player == null)
+            {
+                return;
+            }
+            Transform waterParticles = player.Find("camPivot/camRoot/camOffset/pdaCamPivot/SpawnPlayerFX/PlayerFX(Clone)/WaterParticlesSpawner");
+            if (waterParticles == null)
+            {
+                Debug.LogError("WaterParticlesSpawner not found");
+                return;
+            }
+            waterParticles.gameObject.SetActive(false);
+        }
+
         public static float gbuffersMaxRenderDistance => gbuffersMaxRenderDistanceEntry.Value;
 
         private CommandBuffer cb;
         private CommandBuffer mainCB;
-        private CommandBuffer specularCB;
 
         private RenderTexture mainRT;
         private RenderTexture depthRT;
-        private RenderTexture normalRT;
+        private RenderTexture worldNormalRT;
+        private RenderTexture localNormalRT;
         private RenderTexture albedoRT;
         private RenderTexture specularRT;
-        private RenderTexture emissionRT;
-        private RenderTexture idRT;
+        private RenderTexture aoRT;
 
         private Shader texControlDepthShader;
         private Material mcdMaterial; //monocromatic control depth
         private Shader monocromaticControlDepthShader;
         private Material tcdMaterial; //texture control depth
 
+        private Camera CreateNewCam(string name, Camera copyFrom)
+        {
+            GameObject newCamObj = new GameObject(name);
+            newCamObj.transform.SetParent(copyFrom.transform.parent);
+            newCamObj.transform.position = copyFrom.transform.position;
+            newCamObj.transform.rotation = copyFrom.transform.rotation;
+            Camera newCam = newCamObj.AddComponent<Camera>();
+            newCam.CopyFrom(copyFrom);
+            newCam.depth = copyFrom.depth - 1;
+            return newCam;
+        }
+
         private void SetupCB()
         {
+            Debug.LogWarning("mod core started");
             RemovePlayerBreathBubbles();
             RemoveScubaMask();
-            Debug.LogWarning("mod core started");
-            GameObject gbufferCamObj = new GameObject("GBufferCam");
-            gbufferCamObj.transform.SetParent(mainCam.transform.parent);
-            gbufferCamObj.transform.position = mainCam.transform.position;
-            gbufferCamObj.transform.rotation = mainCam.transform.rotation;
-            gbufferCam = gbufferCamObj.AddComponent<Camera>();
-            gbufferCam.CopyFrom(mainCam);
-            gbufferCam.depth = mainCam.depth - 1;
+            RemoveWaterParticlesSpawner();
+            gbufferCam = CreateNewCam("gBufferCam", mainCam);
+            InjectCustomWaterSurface(gbufferCam);
 
             if (mainRT == null)
-            { 
+            {
                 mainRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 24, RenderTextureFormat.ARGB32);
                 mainRT.Create();
                 depthRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
                 depthRT.Create();
-                normalRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
-                normalRT.Create();
+                worldNormalRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
+                worldNormalRT.Create();
+                localNormalRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
+                localNormalRT.Create();
                 albedoRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
                 albedoRT.Create();
                 specularRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
                 specularRT.Create();
-                emissionRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGB32);
-                emissionRT.Create();
-                idRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGB32);
-                idRT.Create();
+                aoRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
+                aoRT.Create();
             }
 
             if (monocromaticControlDepthShader == null)
@@ -183,35 +223,140 @@ namespace GBufferCapture
             }
 
             gbufferCam.depthTextureMode = DepthTextureMode.Depth;
+            UwePostProcessingManager postProcessingManager = mainCam.GetComponent<UwePostProcessingManager>();
+            PostProcessingProfile currentProfile = (PostProcessingProfile) AccessTools.Field(typeof(UwePostProcessingManager), "currentProfile").GetValue(postProcessingManager);
+            PostProcessingBehaviour behaviour = postProcessingManager.behaviour;
+            BuiltinDebugViewsComponent m_DebugViews = (BuiltinDebugViewsComponent) AccessTools.Field(typeof(PostProcessingBehaviour), "m_DebugViews").GetValue(behaviour);
+
+            CommandBuffer localNormalCB = new CommandBuffer();
+            localNormalCB.name = "NormalMapCB";
+
+            Material normalMapMaterial = m_DebugViews.context.materialFactory.Get("Hidden/Post FX/Builtin Debug Views");
+            normalMapMaterial.shaderKeywords = null;
+            if (m_DebugViews.context.isGBufferAvailable)
+            {
+                normalMapMaterial.EnableKeyword("SOURCE_GBUFFER");
+            }
+
+            localNormalCB.Blit(null, localNormalRT, normalMapMaterial, 1);
+            int localNormalTempRT = Shader.PropertyToID("_LocalNormalTempRT");
+            localNormalCB.GetTemporaryRT(localNormalTempRT, localNormalRT.width, localNormalRT.height, 0, FilterMode.Bilinear, localNormalRT.format);
+            localNormalCB.Blit(localNormalRT, localNormalTempRT, tcdMaterial);
+            localNormalCB.Blit(localNormalTempRT, localNormalRT);
+            localNormalCB.ReleaseTemporaryRT(localNormalTempRT);
+            gbufferCam.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, localNormalCB);
+
+
+
+
+
+
+
+            AmbientOcclusionComponent m_AmbientOcclusion = (AmbientOcclusionComponent) AccessTools.Field(typeof(PostProcessingBehaviour), "m_AmbientOcclusion").GetValue(behaviour);
+
+            CommandBuffer aoCB = new CommandBuffer();
+            aoCB.name = "Ambient Occlusion CB";
+
+            AmbientOcclusionModel.Settings aoSettings = m_AmbientOcclusion.model.settings;
+            Material aoMaterial1 = m_AmbientOcclusion.context.materialFactory.Get("Hidden/Post FX/Blit");
+            Material aoMaterial2 = m_AmbientOcclusion.context.materialFactory.Get("Hidden/Post FX/Ambient Occlusion");
+            aoMaterial2.shaderKeywords = null;
+            aoMaterial2.SetFloat(Shader.PropertyToID("_Intensity"), aoSettings.intensity);
+            aoMaterial2.SetFloat(Shader.PropertyToID("_Radius"), aoSettings.radius);
+            aoMaterial2.SetFloat(Shader.PropertyToID("_Downsample"), aoSettings.downsampling ? 0.5f : 1f);
+            aoMaterial2.SetInt(Shader.PropertyToID("_SampleCount"), (int)aoSettings.sampleCount);
+            if (!m_AmbientOcclusion.context.isGBufferAvailable && RenderSettings.fog)
+            {
+                aoMaterial2.SetVector(Shader.PropertyToID("_FogParams"), new UnityEngine.Vector3(RenderSettings.fogDensity, RenderSettings.fogStartDistance, RenderSettings.fogEndDistance));
+                switch (RenderSettings.fogMode)
+                {
+                    case FogMode.Linear:
+                        aoMaterial2.EnableKeyword("FOG_LINEAR");
+                        break;
+                    case FogMode.Exponential:
+                        aoMaterial2.EnableKeyword("FOG_EXP");
+                        break;
+                    case FogMode.ExponentialSquared:
+                        aoMaterial2.EnableKeyword("FOG_EXP2");
+                        break;
+                }
+            }
+            else
+            {
+                aoMaterial2.EnableKeyword("FOG_OFF");
+            }
+            int width = m_AmbientOcclusion.context.width;
+            int height = m_AmbientOcclusion.context.height;
+            int num = ((!aoSettings.downsampling) ? 1 : 2);
+            bool flag = DynamicResolution.IsEnabled();
+            int occlusionTexture = Shader.PropertyToID("_OcclusionTexture1");
+            if (flag)
+            {
+                aoCB.GetTemporaryRT(occlusionTexture, width / num, height / num, 0, FilterMode.Bilinear, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear, 1, enableRandomWrite: false, RenderTextureMemoryless.None, useDynamicScale: true);
+            }
+            else
+            {
+                aoCB.GetTemporaryRT(occlusionTexture, width / num, height / num, 0, FilterMode.Bilinear, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+            }
+            int occlusionSource = (int) AccessTools.Property(typeof(AmbientOcclusionComponent), "occlusionSource").GetValue(m_AmbientOcclusion, null);
+            aoCB.Blit(null, occlusionTexture, aoMaterial2, (int)occlusionSource);
+            int occlusionTexture2 = Shader.PropertyToID("_OcclusionTexture2");
+            if (flag)
+            {
+                aoCB.GetTemporaryRT(occlusionTexture2, width, height, 0, FilterMode.Bilinear, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear, 1, enableRandomWrite: false, RenderTextureMemoryless.None, useDynamicScale: true);
+            }
+            else
+            {
+                aoCB.GetTemporaryRT(occlusionTexture2, width, height, 0, FilterMode.Bilinear, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+            }
+            aoCB.SetGlobalTexture(Shader.PropertyToID("_MainTex"), occlusionTexture);
+            aoCB.Blit(occlusionTexture, occlusionTexture2, aoMaterial2, (occlusionSource == 2) ? 4 : 3);
+            aoCB.ReleaseTemporaryRT(occlusionTexture);
+            occlusionTexture = Shader.PropertyToID("_OcclusionTexture");
+            if (flag)
+            {
+                aoCB.GetTemporaryRT(occlusionTexture, width, height, 0, FilterMode.Bilinear, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear, 1, enableRandomWrite: false, RenderTextureMemoryless.None, useDynamicScale: true);
+            }
+            else
+            {
+                aoCB.GetTemporaryRT(occlusionTexture, width, height, 0, FilterMode.Bilinear, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+            }
+            aoCB.SetGlobalTexture(Shader.PropertyToID("_MainTex"), occlusionTexture2);
+            aoCB.Blit(occlusionTexture2, occlusionTexture, aoMaterial2, 5);
+            aoCB.ReleaseTemporaryRT(occlusionTexture2);
+            bool ambientOnlySupported = (bool) AccessTools.Property(typeof(AmbientOcclusionComponent), "ambientOnlySupported").GetValue(m_AmbientOcclusion, null);
+            RenderTargetIdentifier[] m_MRT = AccessTools.Field(typeof(AmbientOcclusionComponent), "m_MRT").GetValue(m_AmbientOcclusion) as RenderTargetIdentifier[];
+            aoCB.SetGlobalTexture(Shader.PropertyToID("_MainTex"), occlusionTexture);
+            aoCB.Blit(occlusionTexture, aoRT, aoMaterial2, 8);
+            aoCB.ReleaseTemporaryRT(occlusionTexture);
+            gbufferCam.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, aoCB);
+
+
+
 
             cb = new CommandBuffer();
             cb.name = "GBuffer Command Buffer";
-
             cb.Blit(BuiltinRenderTextureType.CameraTarget, depthRT, mcdMaterial);
-            cb.Blit(BuiltinRenderTextureType.GBuffer2, normalRT, tcdMaterial);
+            cb.Blit(BuiltinRenderTextureType.GBuffer2, worldNormalRT, tcdMaterial);
             cb.Blit(BuiltinRenderTextureType.GBuffer0, albedoRT, tcdMaterial);
+            cb.Blit(BuiltinRenderTextureType.GBuffer1, specularRT, tcdMaterial);
             gbufferCam.AddCommandBuffer(CameraEvent.AfterEverything, cb);
 
             mainCB = new CommandBuffer();
             mainCB.name = "Main Camera Command Buffer";
             mainCB.Blit(BuiltinRenderTextureType.CameraTarget, mainRT);
             mainCam.AddCommandBuffer(CameraEvent.AfterEverything, mainCB);
-
-            specularCB = new CommandBuffer();
-            specularCB.name = "Specular Command Buffer";
-            specularCB.Blit(BuiltinRenderTextureType.GBuffer1, specularRT);
-            mainCam.AddCommandBuffer(CameraEvent.AfterGBuffer, specularCB);
         }
 
         private WaterGBufferInjector injectorInstance;
 
-        void SetupWaterSurfaceOnGBuffers()
+        void InjectCustomWaterSurface(Camera cam)
         {
             if (injectorInstance != null)
             {
                 return;
             }
-            injectorInstance = gbufferCam.gameObject.AddComponent<WaterGBufferInjector>();
+            injectorInstance = cam.gameObject.AddComponent<WaterGBufferInjector>();
         }
 
         private GUIStyle labelStyle;
@@ -229,9 +374,14 @@ namespace GBufferCapture
                     GUI.DrawTexture(new Rect(0, 0, previewWidth, previewHeight), depthRT, ScaleMode.StretchToFill, false);
                     stackPos++;
                 }
-                if (saveNormalEntry.Value)
+                if (saveWorldNormalEntry.Value)
                 { 
-                    GUI.DrawTexture(new Rect(0, previewHeight*stackPos, previewWidth, previewHeight), normalRT, ScaleMode.StretchToFill, false);
+                    GUI.DrawTexture(new Rect(0, previewHeight*stackPos, previewWidth, previewHeight), worldNormalRT, ScaleMode.StretchToFill, false);
+                    stackPos++;
+                }
+                if (saveLocalNormalEntry.Value)
+                {
+                    GUI.DrawTexture(new Rect(0, previewHeight*stackPos, previewWidth, previewHeight), localNormalRT, ScaleMode.StretchToFill, false);
                     stackPos++;
                 }
                 if (saveAlbedoEntry.Value)
@@ -244,7 +394,11 @@ namespace GBufferCapture
                     GUI.DrawTexture(new Rect(0, previewHeight*stackPos, previewWidth, previewHeight), specularRT, ScaleMode.StretchToFill, false);
                     stackPos++;
                 }
-                //GUI.DrawTexture(new Rect(0, previewHeight*3, previewWidth, previewHeight), mainRT, ScaleMode.StretchToFill, false);
+                if (saveAOEntry.Value)
+                {
+                    GUI.DrawTexture(new Rect(0, previewHeight*stackPos, previewWidth, previewHeight), aoRT, ScaleMode.StretchToFill, false);
+                    stackPos++;
+                }
             }
             string labelText = $"Mod Core {(cb == null ? "Disabled" : "Enabled")}\nCapture {(isCapturing ? "Enabled" : "Disabled")}\nTotal Captures: {totalCaptures}\nCapture Interval: {captureIntervalEntry.Value}s";
             if (labelStyle == null)
@@ -263,7 +417,7 @@ namespace GBufferCapture
         {
             if (cb != null && mainCam != null)
             {
-                //isso seria usado no autodepth shader
+                //isso seria usado no autofogcontroller shader
                 //cb.SetGlobalMatrix("_CameraInvProj", mainCam.projectionMatrix.inverse);
                 //Matrix4x4 worldToCameraMatrix = mainCam.worldToCameraMatrix;
                 //Transform transform = FindObjectOfType<WaterscapeVolume>().waterPlane.transform;
@@ -297,10 +451,9 @@ namespace GBufferCapture
             if (mainCam != null && mainCB != null)
             {
                 mainCam.RemoveCommandBuffer(CameraEvent.AfterEverything, mainCB);
-                mainCam.RemoveCommandBuffer(CameraEvent.AfterGBuffer, specularCB);
-                GameObject.DestroyImmediate(mainCam.gameObject);
             }
             mainCam = null;
+
             if (gbufferCam != null && cb != null)
             {
                 gbufferCam.RemoveCommandBuffer(CameraEvent.AfterEverything, cb);
@@ -313,9 +466,6 @@ namespace GBufferCapture
 
             mainCB?.Release();
             mainCB = null;
-
-            specularCB?.Release();
-            specularCB = null;
 
             injectorInstance = null;
         }
@@ -334,24 +484,13 @@ namespace GBufferCapture
                     if (mainCam != null) //prevent activating mod core at scene loading
                     {
                         SetupCB();
-                        SetupWaterSurfaceOnGBuffers();
                     }
                 }
-            }
-
-            if (Input.GetKeyDown(KeyCode.Alpha0))
-            {
-                //Utils.DumpUniqueMaterials();
-                //Utils.InvestigateCameraNeighborObjects();
-                //Utils.InvestigateCameraColliderCenterObject();
-                //Utils.ReplaceShader("UWE/Terrain/Triplanar with Capping", "TriplanarWithCapping");
-                //Utils.ReplaceShader("UWE/Terrain/Triplanar", "Triplanar");
             }
 
             if (Input.GetKeyDown(KeyCode.F10))
             {
                 isCapturing = !isCapturing;
-                Debug.Log($"G-Buffer capture {(isCapturing ? "started" : "stopped")}");
             }
 
             if (isCapturing && cb != null)
@@ -374,10 +513,12 @@ namespace GBufferCapture
                             throw new NotSupportedException($"Unsupported saving type: {savingFormatEntry.Value}");
                     }
                     if (saveDepthEntry.Value) saveFunc($"{timestamp}_depth", depthRT, captureWidth, captureHeight);
-                    if (saveNormalEntry.Value) saveFunc($"{timestamp}_normal", normalRT, captureWidth, captureHeight); 
+                    if (saveWorldNormalEntry.Value) saveFunc($"{timestamp}_world_normal", worldNormalRT, captureWidth, captureHeight);
+                    if (saveLocalNormalEntry.Value) saveFunc($"{timestamp}_local_normal", localNormalRT, captureWidth, captureHeight);
                     if (saveAlbedoEntry.Value) saveFunc($"{timestamp}_albedo", albedoRT, captureWidth, captureHeight);
                     if (saveFinalRenderEntry.Value) saveFunc($"{timestamp}_base", mainRT, captureWidth, captureHeight);
                     if (saveSpecularEntry.Value) saveFunc($"{timestamp}_specular", specularRT, captureWidth, captureHeight);
+                    if (saveAOEntry.Value) saveFunc($"{timestamp}_ao", aoRT, captureWidth, captureHeight);
                     totalCaptures++;
                 }
             }
