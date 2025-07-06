@@ -9,7 +9,7 @@ namespace GBufferCapture
     {
 
         //used to inspect terrain patches
-        public static void InvestigateCenterObject()
+        public static void InvestigateCameraColliderCenterObject()
         {
             Camera mainCam = UnityEngine.Object.FindObjectOfType<WaterSurfaceOnCamera>()?.gameObject.GetComponent<Camera>();
             Ray ray = mainCam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
@@ -37,6 +37,52 @@ namespace GBufferCapture
                 {
                     GameObject target = kvp.Value;
                     target.name = target.name + "1234";
+                }
+            }
+        }
+
+        public static void InvestigateCameraNeighborObjects()
+        {
+            Camera mainCam = UnityEngine.Object.FindObjectOfType<WaterSurfaceOnCamera>()?.gameObject.GetComponent<Camera>();
+            Player player = UnityEngine.Object.FindObjectOfType<Player>();
+            GameObject playerObject = (player != null) ? player.gameObject : null;
+            float radius = 3.0f;
+            Vector3 center = mainCam.transform.position;
+            GameObject[] allGameObjects = UnityEngine.Object.FindObjectsOfType<GameObject>();
+            Debug.Log("----------------------------------------------------");
+            foreach (GameObject go in allGameObjects)
+            {
+                if (playerObject != null && (go == playerObject || go.transform.IsChildOf(playerObject.transform)))
+                {
+                    continue;
+                }
+                if (Vector3.Distance(go.transform.position, center) <= radius)
+                {
+                    Debug.Log($"[Object]: {go.name}");
+                    foreach (Component component in go.GetComponents<Component>())
+                    {
+                        if (component != null)
+                        {
+                            Debug.Log($"  - {component.GetType().FullName}");
+                        }
+                    }
+                }
+            }
+            Debug.Log("----------------------------------------------------");
+        }
+
+        public static List<Material> uniqueMaterials = new List<Material>();
+
+        public static void DumpUniqueMaterials()
+        {
+            Renderer[] allRenderers = Resources.FindObjectsOfTypeAll<Renderer>();
+            foreach (Renderer renderer in allRenderers)
+            {
+                Material mat = renderer.sharedMaterial;
+                if (!uniqueMaterials.Contains(mat))
+                {
+                    uniqueMaterials.Add(mat);
+                    Debug.Log($"Material \"{mat.name}\" uses shader \"{mat.shader}\"");
                 }
             }
         }
@@ -81,14 +127,11 @@ namespace GBufferCapture
         public static Shader LoadExternalShader(string shaderName)
         {
             var bundle = AssetBundle.LoadFromFile(GBufferCapturePlugin.assetBundlePath);
-
             if (bundle == null)
             {
                 Debug.LogError("failed to load AssetBundle!");
             }
-
             Shader loadedShader = bundle.LoadAsset<Shader>(shaderName);
-
             if (loadedShader != null)
             {
                 if (!loadedShader.isSupported)
@@ -100,7 +143,6 @@ namespace GBufferCapture
             {
                 Debug.LogError(shaderName + " not found on AssetBundle!");
             }
-
             bundle.Unload(false);
             return loadedShader;
         }

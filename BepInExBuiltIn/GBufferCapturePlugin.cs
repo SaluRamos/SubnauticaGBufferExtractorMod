@@ -13,6 +13,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
+using static HandReticle;
 using static RadicalLibrary.Spline;
 
 namespace GBufferCapture 
@@ -352,7 +353,9 @@ namespace GBufferCapture
 
             if (Input.GetKeyDown(KeyCode.Alpha0))
             {
-                //Utils.InvestigateCenterObject();
+                //Utils.DumpUniqueMaterials();
+                Utils.InvestigateCameraNeighborObjects();
+                //Utils.InvestigateCameraColliderCenterObject();
                 //Utils.ReplaceShader("UWE/Terrain/Triplanar with Capping", "TriplanarWithCapping");
                 //Utils.ReplaceShader("UWE/Terrain/Triplanar", "Triplanar");
             }
