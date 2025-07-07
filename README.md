@@ -9,11 +9,14 @@ the captured gbuffers are:
 - Albedo Map (WORKING)  
 - Specular Map (WORKING)  
 - Ambient Occlusion (WORKING)  
-- Emission Map (NOT SUPPORTED YET)  
+- Emission Map (WORKING APPROXIMATION)  
 - ShaderID/Segmentation per Material (NOT SUPPORTED YET)  
   
-![alt text](readme_images/gbuffers.png)  
-![alt text](readme_images/gbuffers2.png)  
+![alt text](readme_images/image.png)
+![alt text](readme_images/image-1.png)
+![alt text](readme_images/image-2.png)
+![alt text](readme_images/image-3.png)
+![alt text](readme_images/image-4.png)
 ![alt text](readme_images/configs.png)  
   
 ## How to use  
@@ -25,10 +28,13 @@ The captures are taken every one second by default.
 The captures will be at "PathToSubnauticaFolder/BepInEx/plugins/GBufferCapture/captures".  
   
 OBSERVATIONS:  
-- Scuba mask are automatically disabled.  
+- Scuba mask can be disabled in configuration  
+- Water breath can be disabled in configuration  
+- Water particles can be disabled in configuration  
   
 RECOMMENDATIONS:  
-- use dev commands such as "daynightspeed 100" to increase light diversity in you dataset. (SHIFT + ENTER opens command entry)
+- use dev commands such as "daynightspeed 100" to increase light diversity in you dataset. (SHIFT + ENTER opens command entry)  
+- The emission map approximation is calculated based on the difference between the final render and the albedo/specular map, acting as a mask for pixels that are brighter. It will capture strong reflections, avoid using flashlight.  
   
 ## Requirements
 - https://github.com/BepInEx/BepInEx  

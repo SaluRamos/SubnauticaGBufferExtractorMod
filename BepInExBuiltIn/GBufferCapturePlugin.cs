@@ -2,6 +2,7 @@
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using Steamworks;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -25,6 +26,12 @@ namespace GBufferCapture
     { 
         PNG,
         JPG
+    }
+
+    public enum EmissionBaseTex
+    { 
+        SPECULAR,
+        ALBEDO
     }
 
     [BepInPlugin(MyGUID, PluginName, VersionString)]
@@ -65,10 +72,19 @@ namespace GBufferCapture
         public static ConfigEntry<bool> saveFinalRenderEntry;
         public static ConfigEntry<bool> saveSpecularEntry;
         public static ConfigEntry<bool> saveAOEntry;
+        public static ConfigEntry<bool> saveEmissionEntry;
+
+        public static ConfigEntry<float> emissionThresholdEntry;
+        public static ConfigEntry<float> emissionMultiplierEntry;
+        public static ConfigEntry<float> emissionMaskThresholdEntry;
+        public static ConfigEntry<float> emissionPenaltyEntry;
+        public static ConfigEntry<float> emissionPureWhiteDefinitionEntry;
+        public static ConfigEntry<EmissionBaseTex> emissionTexEntry;
 
         public static ConfigEntry<bool> removeScubaMaskEntry;
         public static ConfigEntry<bool> removeBreathBubblesEntry;
         public static ConfigEntry<bool> removeWaterParticlesEntry;
+        public static ConfigEntry<bool> neverShowDebugGUIEntry;
 
         private void Awake()
         {
@@ -78,7 +94,7 @@ namespace GBufferCapture
             depthControlWaterLevelToleranceEntry = Config.Bind("Rendering", "DepthControlWaterLevelTolerance", 100.0f, "the mod shaders converts depthmap to worldPos and may fail when you shake camera vertically too fast, increase this value to reduce/remove this effect error in captured gbuffers");
 
             gbuffersPreviewEnabledEntry = Config.Bind("Gui", "gbuffersPreviewEnabled", true, "toggle gbuffers captures GUI");
-            gbuffersPreviewSizeEntry = Config.Bind("Gui", "gbuffersPreviewSize", 256, new ConfigDescription("width of gbuffers preview", new AcceptableValueRange<int>(100, 423)));
+            gbuffersPreviewSizeEntry = Config.Bind("Gui", "gbuffersPreviewSize", 256, new ConfigDescription("width of gbuffers preview", new AcceptableValueRange<int>(100, 768)));
 
             captureIntervalEntry = Config.Bind("Capture", "CaptureInterval", 1.0f, "Set time between captures in seconds");
             captureWidthEntry = Config.Bind("Capture", "CaptureWidth", 960, "Resize capture width");
@@ -93,10 +109,19 @@ namespace GBufferCapture
             saveFinalRenderEntry = Config.Bind("Capture", "saveFinalRender", true, "toggle saving final render");
             saveSpecularEntry = Config.Bind("Capture", "saveSpecularMap", true, "toggle saving specular map");
             saveAOEntry = Config.Bind("Capture", "saveAmbientOcclusionMap", true, "toggle saving ambient occlusion map");
+            saveEmissionEntry = Config.Bind("Capture", "saveEmissionMap", true, "toggle saving emission map");
+
+            emissionThresholdEntry = Config.Bind("Emission", "EmissionThreshold", 0f, new ConfigDescription("Threshold to differentiate emission from normal lighting. Higher values remove more ambient light.", new AcceptableValueRange<float>(0f, 1f)));
+            emissionMultiplierEntry = Config.Bind("Emission", "EmissionMultiplier", 4.0f, new ConfigDescription("Multiplier to boost the brightness of the captured emission.", new AcceptableValueRange<float>(0.1f, 10f)));
+            emissionMaskThresholdEntry = Config.Bind("Emission", "EmissionMaskThreshold", 0.69f, new ConfigDescription("Cutoff value to decide if a pixel is emissive based on the calculated mask brightness.", new AcceptableValueRange<float>(0f, 1f)));
+            emissionPenaltyEntry = Config.Bind("Emission", "EmissionPenalty", 2.7f, new ConfigDescription("Power of the penalty applied to bright base texture surfaces to prevent them from being marked as emissive. 0 = no penalty. Higher values = stronger penalty.", new AcceptableValueRange<float>(0f, 10f)));
+            emissionPureWhiteDefinitionEntry = Config.Bind("Emission", "EmissionPureWhiteDefinition", 1.0f, new ConfigDescription("Threshold to consider an albedo color as 'grayscale' to apply the penalty. Low values only affect pure white/gray. Higher values affect slightly colored surfaces too.", new AcceptableValueRange<float>(0f, 1f)));
+            emissionTexEntry = Config.Bind("Emission", "EmissionBaseTex", EmissionBaseTex.ALBEDO, "Base texture used to approximate emission map");
 
             removeScubaMaskEntry = Config.Bind("Screen Cleaner", "removeScubaMask", true, "toggle remove scuba mask");
             removeBreathBubblesEntry = Config.Bind("Screen Cleaner", "removeBreathBubbles", true, "toggle breath bubbles");
             removeWaterParticlesEntry = Config.Bind("Screen Cleaner", "removeWaterParticles", true, "toggle water particles");
+            neverShowDebugGUIEntry = Config.Bind("Screen Cleaner", "neverShowDebugGUI", true, "hides game debug GUI that appears when F1 is pressed");
 
             Logger.LogInfo($"PluginName: {PluginName}, VersionString: {VersionString} is loading...");
             harmony.PatchAll();
@@ -154,6 +179,13 @@ namespace GBufferCapture
             waterParticles.gameObject.SetActive(active);
         }
 
+        private void ToggleParts()
+        {
+            ToggleScubaMask(!removeScubaMaskEntry.Value);
+            TogglePlayerBreathBubbles(!removeBreathBubblesEntry.Value);
+            ToggleWaterParticlesSpawner(!removeWaterParticlesEntry.Value);
+        }
+
         public static float gbuffersMaxRenderDistance => gbuffersMaxRenderDistanceEntry.Value;
 
         private CommandBuffer cb;
@@ -166,11 +198,14 @@ namespace GBufferCapture
         private RenderTexture albedoRT;
         private RenderTexture specularRT;
         private RenderTexture aoRT;
+        private RenderTexture emissionRT;
 
         private Shader texControlDepthShader;
         private Material mcdMaterial; //monocromatic control depth
         private Shader monocromaticControlDepthShader;
         private Material tcdMaterial; //texture control depth
+        private Shader emissionShader;
+        private Material emissionMaterial;
 
         private Camera CreateNewCam(string name, Camera copyFrom)
         {
@@ -187,9 +222,7 @@ namespace GBufferCapture
         private void SetupCB()
         {
             Debug.LogWarning("mod core started");
-            ToggleScubaMask(!removeScubaMaskEntry.Value);
-            TogglePlayerBreathBubbles(!removeBreathBubblesEntry.Value);
-            ToggleWaterParticlesSpawner(!removeWaterParticlesEntry.Value);
+            ToggleParts();
             gbufferCam = CreateNewCam("gBufferCam", mainCam);
             InjectCustomWaterSurface(gbufferCam);
 
@@ -209,6 +242,8 @@ namespace GBufferCapture
                 specularRT.Create();
                 aoRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
                 aoRT.Create();
+                emissionRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
+                emissionRT.Create();
             }
 
             if (monocromaticControlDepthShader == null)
@@ -220,6 +255,10 @@ namespace GBufferCapture
                 texControlDepthShader = Utils.LoadExternalShader("TextureFogController");
                 tcdMaterial = new Material(texControlDepthShader);
                 tcdMaterial.hideFlags = HideFlags.HideAndDontSave;
+
+                emissionShader = Utils.LoadExternalShader("Emission");
+                emissionMaterial = new Material(emissionShader);
+                emissionMaterial.hideFlags = HideFlags.HideAndDontSave;
             }
 
             gbufferCam.depthTextureMode = DepthTextureMode.Depth;
@@ -399,6 +438,11 @@ namespace GBufferCapture
                     GUI.DrawTexture(new Rect(0, previewHeight*stackPos, previewWidth, previewHeight), aoRT, ScaleMode.StretchToFill, false);
                     stackPos++;
                 }
+                if (saveEmissionEntry.Value)
+                {
+                    GUI.DrawTexture(new Rect(0, previewHeight*stackPos, previewWidth, previewHeight), emissionRT, ScaleMode.StretchToFill, false);
+                    stackPos++;
+                }
             }
             string labelText = $"Mod Core {(cb == null ? "Disabled" : "Enabled")}\nCapture {(isCapturing ? "Enabled" : "Disabled")}\nTotal Captures: {totalCaptures}\nCapture Interval: {captureIntervalEntry.Value}s";
             if (labelStyle == null)
@@ -437,6 +481,24 @@ namespace GBufferCapture
                 {
                     cb.SetGlobalFloat("_WaterLevel", -depthControlWaterLevel);
                 }
+
+                emissionMaterial.SetFloat("_BrightnessThreshold", emissionThresholdEntry.Value);
+                emissionMaterial.SetFloat("_EmissionMultiplier", emissionMultiplierEntry.Value);
+                emissionMaterial.SetFloat("_MaskThreshold", emissionMaskThresholdEntry.Value);
+                emissionMaterial.SetFloat("_AlbedoPenalty", emissionPenaltyEntry.Value);
+                emissionMaterial.SetFloat("_PureWhiteDefinition", emissionPureWhiteDefinitionEntry.Value);
+                switch (emissionTexEntry.Value)
+                { 
+                    case EmissionBaseTex.SPECULAR:
+                        emissionMaterial.SetTexture("_BaseTex", specularRT);
+                        break;
+                    case EmissionBaseTex.ALBEDO:
+                        emissionMaterial.SetTexture("_BaseTex", albedoRT);
+                        break;
+                    default:
+                        throw new NotSupportedException($"Unsupported emission base texture type: {emissionTexEntry.Value}");
+                }
+                Graphics.Blit(mainRT, emissionRT, emissionMaterial);
             }
         }
 
@@ -468,6 +530,8 @@ namespace GBufferCapture
             mainCB = null;
 
             injectorInstance = null;
+
+            ToggleParts();
         }
 
         void Update()
@@ -491,6 +555,15 @@ namespace GBufferCapture
             if (Input.GetKeyDown(KeyCode.F10))
             {
                 isCapturing = !isCapturing;
+            }
+
+            if (neverShowDebugGUIEntry.Value)
+            {
+                TerrainDebugGUI[] array = UnityEngine.Object.FindObjectsOfType<TerrainDebugGUI>();
+                foreach (TerrainDebugGUI obj in array)
+                {
+                    obj.enabled = false;
+                }
             }
 
             if (isCapturing && cb != null)
@@ -519,6 +592,7 @@ namespace GBufferCapture
                     if (saveFinalRenderEntry.Value) saveFunc($"{timestamp}_base", mainRT, captureWidth, captureHeight);
                     if (saveSpecularEntry.Value) saveFunc($"{timestamp}_specular", specularRT, captureWidth, captureHeight);
                     if (saveAOEntry.Value) saveFunc($"{timestamp}_ao", aoRT, captureWidth, captureHeight);
+                    if (saveEmissionEntry.Value) saveFunc($"{timestamp}_emission", emissionRT, captureWidth, captureHeight);
                     totalCaptures++;
                 }
             }
