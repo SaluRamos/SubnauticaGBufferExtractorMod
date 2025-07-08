@@ -108,12 +108,17 @@ namespace GBufferCapture
             Debug.Log($"renderers replaced: {renderersAffectedCount}");
         }
 
+        private static AssetBundle bundle;
+
         public static Shader LoadExternalShader(string shaderName)
         {
-            var bundle = AssetBundle.LoadFromFile(GBufferCapturePlugin.assetBundlePath);
             if (bundle == null)
-            {
-                Debug.LogError("failed to load AssetBundle!");
+            { 
+                bundle = AssetBundle.LoadFromFile(GBufferCapturePlugin.assetBundlePath);
+                if (bundle == null)
+                {
+                    Debug.LogError("failed to load AssetBundle!");
+                }
             }
             Shader loadedShader = bundle.LoadAsset<Shader>(shaderName);
             if (loadedShader != null)
@@ -129,6 +134,15 @@ namespace GBufferCapture
             }
             bundle.Unload(false);
             return loadedShader;
+        }
+
+        public static void UnloadAssetBundle()
+        {
+            if (bundle != null)
+            {
+                bundle.Unload(true);
+                bundle = null;
+            }
         }
 
         public static void SaveTexture(string fileName, RenderTexture rtFull, int newWidth, int newHeight, string extension, Func<Texture2D, byte[]> encoder)
