@@ -9,7 +9,9 @@ the captured gbuffers are:
 - Albedo Map (WORKING)  
 - Specular Map (WORKING)  
 - Ambient Occlusion (WORKING)  
-- Emission Map (WORKING APPROXIMATION)  
+- Before Lightning (WORKING)  
+- SkyBox (WORKING)
+- Emission Map (WORKING APPROXIMATION BUT NOT IN REAL TIME)  
 - ShaderID/Segmentation per Material (NOT SUPPORTED YET)  
   
 ![alt text](readme_images/image.png)
@@ -26,6 +28,7 @@ Press F11 to toggle mod core.
 Then, press F10 to toggle recording. 
 The captures are taken every one second by default.  
 The captures will be at "PathToSubnauticaFolder/BepInEx/plugins/GBufferCapture/captures".  
+F9 takes a single capture.  
   
 RECOMMENDATIONS:  
 - use dev commands such as "daynightspeed 100" to increase light diversity in you dataset. (SHIFT + ENTER opens command entry)  

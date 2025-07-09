@@ -16,3 +16,5 @@ GBufferExtractorBuiltIn/.vsconfig
 GBufferExtractorBuiltIn/UpgradeLog.htm
 
 BepInExBuiltIn/bin
+
+emission_approximation/captures
