@@ -84,10 +84,19 @@ namespace GBufferCapture
     {
 
         private static List<WaterSurfacePatcherInfo> patchs = new List<WaterSurfacePatcherInfo>();
+        private static FieldInfo patchMeshField;
+        private static FieldInfo matricesQueueField;
+        private static FieldInfo jobHandleField;
 
         public static void AddPatch(WaterSurfacePatcherInfo patch)
         {
             patchs.Add(patch);
+            if (patchMeshField == null)
+            {
+                patchMeshField = AccessTools.Field(typeof(HeightFieldMesh), "patchMesh");
+                matricesQueueField = AccessTools.Field(typeof(HeightFieldMesh), "matrices");
+                jobHandleField = AccessTools.Field(typeof(HeightFieldMesh), "jobHandle");
+            }
         }
 
         [HarmonyPatch(typeof(HeightFieldMesh), "FinalizeRender")]
@@ -96,19 +105,19 @@ namespace GBufferCapture
         {
             foreach (var patch in patchs)
             {
-                if (patch.cb == null)
+                if (patch.cb == null || patchMeshField == null)
                 {
                     return;
                 }
 
                 try
                 {
-                    JobHandle jobHandle = (JobHandle) AccessTools.Field(typeof(HeightFieldMesh), "jobHandle").GetValue(__instance);
+                    JobHandle jobHandle = (JobHandle) jobHandleField.GetValue(__instance);
                     jobHandle.Complete();
                     patch.cb.Clear();
 
-                    patch.mesh = AccessTools.Field(typeof(HeightFieldMesh), "patchMesh").GetValue(__instance) as Mesh;
-                    var waterMatricesQueue = (NativeQueue<float4x4>) AccessTools.Field(typeof(HeightFieldMesh), "matrices").GetValue(__instance);
+                    patch.mesh = patchMeshField.GetValue(__instance) as Mesh;
+                    var waterMatricesQueue = (NativeQueue<float4x4>) matricesQueueField.GetValue(__instance);
 
                     if (patch.mesh == null || !waterMatricesQueue.IsCreated || waterMatricesQueue.Count == 0)
                     {
@@ -147,6 +156,9 @@ namespace GBufferCapture
             {
                 patch.Clear();
             }
+            patchMeshField = null;
+            matricesQueueField = null;
+            jobHandleField = null;
             GBufferCapturePlugin.instance.ClearCB();
             patchs.Clear();
         }

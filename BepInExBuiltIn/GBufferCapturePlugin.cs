@@ -65,6 +65,7 @@ namespace GBufferCapture
         public static ConfigEntry<SavingFormat> savingFormatEntry;
         public static ConfigEntry<int> jpgQualityEntry;
 
+        public static ConfigEntry<bool> showWaterLevelEntry;
         public static ConfigEntry<bool> saveDepthEntry;
         public static ConfigEntry<bool> saveWorldNormalEntry;
         public static ConfigEntry<bool> saveLocalNormalEntry;
@@ -73,7 +74,10 @@ namespace GBufferCapture
         public static ConfigEntry<bool> saveSpecularEntry;
         public static ConfigEntry<bool> saveAOEntry;
         public static ConfigEntry<bool> saveNoLightEntry;
-        public static ConfigEntry<bool> saveSkyboxEntry;
+        public static ConfigEntry<bool> saveEmissionEntry;
+
+        public static ConfigEntry<float> emissionHueDifferenceEntry;
+        public static ConfigEntry<float> emissionMinSaturationEntry;
 
         public static ConfigEntry<bool> removeScubaMaskEntry;
         public static ConfigEntry<bool> removeBreathBubblesEntry;
@@ -96,6 +100,7 @@ namespace GBufferCapture
             savingFormatEntry = Config.Bind("Capture", "SavingFormat", SavingFormat.JPG, "Define saving format extension");
             jpgQualityEntry = Config.Bind("Capture", "JPG Quality", 95, "jpg quality");
 
+            showWaterLevelEntry = Config.Bind("Capture", "showWaterLevelRT", false, "toggle showing water level rt");
             saveDepthEntry = Config.Bind("Capture", "saveDepthMap", true, "toggle saving depth map");
             saveWorldNormalEntry = Config.Bind("Capture", "saveWorldNormalMap", true, "toggle saving world normal map");
             saveLocalNormalEntry = Config.Bind("Capture", "saveLocalNormalMap", false, "toggle saving local normal map");
@@ -104,7 +109,10 @@ namespace GBufferCapture
             saveSpecularEntry = Config.Bind("Capture", "saveSpecularMap", true, "toggle saving specular map");
             saveAOEntry = Config.Bind("Capture", "saveAmbientOcclusionMap", true, "toggle saving ambient occlusion map");
             saveNoLightEntry = Config.Bind("Capture", "saveNoLightMap", true, "toggle saving before lighting");
-            saveSkyboxEntry = Config.Bind("Capture", "saveSkyBox", true, "toggle saving skybox");
+            saveEmissionEntry = Config.Bind("Capture", "saveEmission", true, "toggle saving emission");
+
+            emissionHueDifferenceEntry = Config.Bind("Emission", "hueDifference", 0.25f, new ConfigDescription("controls what is the min hue difference final render and albedo to copy the pixel to emission map", new AcceptableValueRange<float>(0f, 1f)));
+            emissionMinSaturationEntry = Config.Bind("Emission", "hueDifference", 0.01176f, new ConfigDescription("controls what is the min saturation in final render to copy the pixel to emission map", new AcceptableValueRange<float>(0f, 1f)));
 
             removeScubaMaskEntry = Config.Bind("Screen Cleaner", "removeScubaMask", true, "toggle remove scuba mask");
             removeBreathBubblesEntry = Config.Bind("Screen Cleaner", "removeBreathBubbles", true, "toggle breath bubbles");
@@ -139,7 +147,7 @@ namespace GBufferCapture
         private void ToggleScubaMask(bool active)
         {
             //most screen trash uses a component called "HideForScreenshots"
-            Transform player = GameObject.Find("Player")?.transform;
+            Transform player = Player.main?.transform;
             if (player == null)
             {
                 return;
@@ -163,7 +171,7 @@ namespace GBufferCapture
 
         private void ToggleWaterParticlesSpawner(bool active)
         {
-            Transform player = GameObject.Find("Player")?.transform;
+            Transform player = Player.main?.transform;
             if (player == null)
             {
                 return;
@@ -193,6 +201,7 @@ namespace GBufferCapture
         private CommandBuffer mainCB;
         private CommandBuffer blightCB;
 
+        private RenderTexture waterLevelRT;
         private RenderTexture mainRT;
         private RenderTexture depthRT;
         private RenderTexture worldNormalRT;
@@ -201,12 +210,16 @@ namespace GBufferCapture
         private RenderTexture specularRT;
         private RenderTexture aoRT;
         private RenderTexture beforeLightRT;
-        private RenderTexture afterSkyboxRT;
+        private RenderTexture emissionRT;
 
+        private Shader waterLevelShader;
+        private Material waterLevelMaterial;
         private Shader texControlDepthShader;
         private Material mcdMaterial; //monocromatic control depth
         private Shader monocromaticControlDepthShader;
         private Material tcdMaterial; //texture control depth
+        private Shader emissionShader;
+        private Material emissionMaterial;
 
         private Camera CreateNewCam(string name, Camera copyFrom)
         {
@@ -224,6 +237,8 @@ namespace GBufferCapture
         {
             if (mainRT == null)
             {
+                waterLevelRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
+                waterLevelRT.Create();
                 mainRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 24, RenderTextureFormat.ARGB32);
                 mainRT.Create();
                 depthRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
@@ -240,8 +255,8 @@ namespace GBufferCapture
                 aoRT.Create();
                 beforeLightRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
                 beforeLightRT.Create();
-                afterSkyboxRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
-                afterSkyboxRT.Create();
+                emissionRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
+                emissionRT.Create();
             }
         }
 
@@ -255,6 +270,14 @@ namespace GBufferCapture
             texControlDepthShader = Utils.LoadExternalShader("TextureFogController");
             tcdMaterial = new Material(texControlDepthShader);
             tcdMaterial.hideFlags = HideFlags.HideAndDontSave;
+
+            emissionShader = Utils.LoadExternalShader("Emission");
+            emissionMaterial = new Material(emissionShader);
+            emissionMaterial.hideFlags = HideFlags.HideAndDontSave;
+
+            //waterLevelShader = Utils.LoadExternalShader("WaterLevel");
+            //waterLevelMaterial = new Material(waterLevelShader);
+            //waterLevelMaterial.hideFlags = HideFlags.HideAndDontSave;
         }
 
         private void SetupLocalNormalMap()
@@ -368,11 +391,6 @@ namespace GBufferCapture
 
         private void SetupCB()
         {
-            Debug.LogWarning("mod core started");
-            ToggleParts();
-            gbufferCam = CreateNewCam("gBufferCam", mainCam);
-            InjectCustomWaterSurface(gbufferCam);
-
             SetupRTs();
             SetupMaterials();
 
@@ -383,19 +401,16 @@ namespace GBufferCapture
             SetupAmbientOcclusion();
 
             cb = new CommandBuffer();
+            //cb.Blit(BuiltinRenderTextureType.CameraTarget, waterLevelRT, waterLevelMaterial);
             cb.Blit(BuiltinRenderTextureType.CameraTarget, depthRT, mcdMaterial);
             cb.Blit(BuiltinRenderTextureType.GBuffer2, worldNormalRT, tcdMaterial);
             cb.Blit(BuiltinRenderTextureType.GBuffer0, albedoRT, tcdMaterial);
             cb.Blit(BuiltinRenderTextureType.GBuffer1, specularRT, tcdMaterial);
             gbufferCam.AddCommandBuffer(CameraEvent.AfterEverything, cb);
 
-            CommandBuffer bskyboxCB = new CommandBuffer();
-            bskyboxCB.Blit(BuiltinRenderTextureType.CameraTarget, afterSkyboxRT, tcdMaterial);
-            gbufferCam.AddCommandBuffer(CameraEvent.AfterSkybox, bskyboxCB);
-
             blightCB = new CommandBuffer();
             blightCB.Blit(BuiltinRenderTextureType.CameraTarget, beforeLightRT, tcdMaterial);
-            mainCam.AddCommandBuffer(CameraEvent.BeforeLighting, blightCB);
+            gbufferCam.AddCommandBuffer(CameraEvent.BeforeLighting, blightCB);
 
             mainCB = new CommandBuffer();
             mainCB.Blit(BuiltinRenderTextureType.CameraTarget, mainRT);
@@ -430,6 +445,8 @@ namespace GBufferCapture
             injectorInstance = null;
 
             ToggleParts();
+
+            Destroy(Player.main.gameObject.GetComponent<BaseOnEmission>());
         }
 
         private WaterGBufferInjector injectorInstance;
@@ -453,6 +470,11 @@ namespace GBufferCapture
                 int previewWidth = gbuffersPreviewSizeEntry.Value;
                 int previewHeight = (int)Math.Ceiling(gbuffersPreviewSizeEntry.Value * (9.0f / 16.0f));
 
+                if (showWaterLevelEntry.Value)
+                { 
+                    GUI.DrawTexture(new Rect(0, 0, previewWidth, previewHeight), waterLevelRT, ScaleMode.StretchToFill, false);
+                    stackPos++;
+                }
                 if (saveDepthEntry.Value)
                 {
                     GUI.DrawTexture(new Rect(0, 0, previewWidth, previewHeight), depthRT, ScaleMode.StretchToFill, false);
@@ -488,9 +510,9 @@ namespace GBufferCapture
                     GUI.DrawTexture(new Rect(0, previewHeight * stackPos, previewWidth, previewHeight), beforeLightRT, ScaleMode.StretchToFill, false);
                     stackPos++;
                 }
-                if (saveSkyboxEntry.Value)
+                if (saveEmissionEntry.Value)
                 {
-                    GUI.DrawTexture(new Rect(0, previewHeight * stackPos, previewWidth, previewHeight), afterSkyboxRT, ScaleMode.StretchToFill, false);
+                    GUI.DrawTexture(new Rect(0, previewHeight * stackPos, previewWidth, previewHeight), emissionRT, ScaleMode.StretchToFill, false);
                     stackPos++;
                 }
             }
@@ -534,14 +556,10 @@ namespace GBufferCapture
         {
             if (cb != null && mainCam != null)
             {
-                //isso seria usado no autofogcontroller shader
-                //cb.SetGlobalMatrix("_CameraInvProj", mainCam.projectionMatrix.inverse);
-                //Matrix4x4 worldToCameraMatrix = mainCam.worldToCameraMatrix;
-                //Transform transform = FindObjectOfType<WaterscapeVolume>().waterPlane.transform;
-                //Plane plane = new Plane(transform.up, transform.position);
-                //Plane plane2 = worldToCameraMatrix.TransformPlane(plane);
-                //Vector3 normal = plane2.normal;
-                //cb.SetGlobalVector("_UweVsWaterPlane", new Vector4(normal.x, normal.y, normal.z, plane2.distance));
+                //Mesh waterPatchMesh = gbufferCam.GetComponent<WaterGBufferInjector>().patch.mesh;
+                //UnityEngine.Vector3[] vertices = waterPatchMesh.vertices;
+                //ComputeBuffer vertexBuffer = new ComputeBuffer(vertices.Length, sizeof(float) * 3);
+                //vertexBuffer.SetData(vertices);
 
                 cb.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
                 cb.SetGlobalMatrix("CameraToWorld", mainCam.cameraToWorldMatrix);
@@ -554,6 +572,11 @@ namespace GBufferCapture
                 {
                     cb.SetGlobalFloat("_WaterLevel", -depthControlWaterLevel);
                 }
+
+                //emissionMaterial.SetTexture("_AlbedoTex", albedoRT);
+                //emissionMaterial.SetFloat("_HueDifferenceThreshold", emissionHueDifferenceEntry.Value);
+                //emissionMaterial.SetFloat("_MinSaturation", emissionMinSaturationEntry.Value);
+                //Graphics.Blit(mainRT, emissionRT, emissionMaterial);
             }
         }
 
@@ -575,11 +598,16 @@ namespace GBufferCapture
                 else
                 { 
                     mainCam = FindObjectOfType<WaterSurfaceOnCamera>()?.gameObject.GetComponent<Camera>();
-                    if (mainCam != null) //prevent activating mod core at scene loading
+                    if (mainCam != null)
                     {
+                        Debug.LogWarning("mod core started");
+                        ToggleParts();
+                        gbufferCam = CreateNewCam("gBufferCam", mainCam);
+                        InjectCustomWaterSurface(gbufferCam);
                         SetupCB();
                         captureNext = 3;
                         SetNight();
+                        Player.main.gameObject.AddComponent<BaseOnEmission>();
                     }
                 }
             }
@@ -653,7 +681,7 @@ namespace GBufferCapture
             if (saveSpecularEntry.Value) saveFunc($"{timestamp}_specular", specularRT, captureWidth, captureHeight);
             if (saveAOEntry.Value) saveFunc($"{timestamp}_ao", aoRT, captureWidth, captureHeight);
             if (saveNoLightEntry.Value) saveFunc($"{timestamp}_no_light", beforeLightRT, captureWidth, captureHeight);
-            if (saveSkyboxEntry.Value) saveFunc($"{timestamp}_skybox", afterSkyboxRT, captureWidth, captureHeight);
+            if (saveEmissionEntry.Value) saveFunc($"{timestamp}_emission", emissionRT, captureWidth, captureHeight);
             totalCaptures++;
         }
     
