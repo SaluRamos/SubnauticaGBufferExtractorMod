@@ -16,7 +16,7 @@ namespace GBufferCapture
         private CommandBuffer cb;
         private Material waterSurfaceMat;
         private Camera cam;
-        private WaterSurfacePatcherInfo patch;
+        public WaterSurfacePatcherInfo patch;
 
         void Awake()
         {
@@ -60,6 +60,7 @@ namespace GBufferCapture
         public Camera cam;
         public CommandBuffer cb;
         public Material mat;
+        public Mesh mesh;
 
         public WaterSurfacePatcherInfo(Camera cam, CommandBuffer cb, Material mat)
         {
@@ -73,6 +74,7 @@ namespace GBufferCapture
             cb = null;
             mat = null;
             cam = null;
+            mesh = null;
         }
 
     }
@@ -82,19 +84,10 @@ namespace GBufferCapture
     {
 
         private static List<WaterSurfacePatcherInfo> patchs = new List<WaterSurfacePatcherInfo>();
-        private static FieldInfo patchMeshField;
-        private static FieldInfo matricesQueueField;
-        private static FieldInfo jobHandleField;
 
         public static void AddPatch(WaterSurfacePatcherInfo patch)
         {
             patchs.Add(patch);
-            if (patchMeshField == null)
-            {
-                patchMeshField = AccessTools.Field(typeof(HeightFieldMesh), "patchMesh");
-                matricesQueueField = AccessTools.Field(typeof(HeightFieldMesh), "matrices");
-                jobHandleField = AccessTools.Field(typeof(HeightFieldMesh), "jobHandle");
-            }
         }
 
         [HarmonyPatch(typeof(HeightFieldMesh), "FinalizeRender")]
@@ -103,21 +96,21 @@ namespace GBufferCapture
         {
             foreach (var patch in patchs)
             {
-                if (patch.cb == null || patchMeshField == null)
+                if (patch.cb == null)
                 {
                     return;
                 }
 
                 try
                 {
-                    JobHandle jobHandle = (JobHandle)jobHandleField.GetValue(__instance);
+                    JobHandle jobHandle = (JobHandle) AccessTools.Field(typeof(HeightFieldMesh), "jobHandle").GetValue(__instance);
                     jobHandle.Complete();
                     patch.cb.Clear();
 
-                    Mesh waterPatchMesh = patchMeshField.GetValue(__instance) as Mesh;
-                    var waterMatricesQueue = (NativeQueue<float4x4>) matricesQueueField.GetValue(__instance);
+                    patch.mesh = AccessTools.Field(typeof(HeightFieldMesh), "patchMesh").GetValue(__instance) as Mesh;
+                    var waterMatricesQueue = (NativeQueue<float4x4>) AccessTools.Field(typeof(HeightFieldMesh), "matrices").GetValue(__instance);
 
-                    if (waterPatchMesh == null || !waterMatricesQueue.IsCreated || waterMatricesQueue.Count == 0)
+                    if (patch.mesh == null || !waterMatricesQueue.IsCreated || waterMatricesQueue.Count == 0)
                     {
                         return;
                     }
@@ -135,7 +128,7 @@ namespace GBufferCapture
                     NativeArray<float4x4> matricesNativeArray = waterMatricesQueue.ToArray(Allocator.Temp);
                     for (int i = 0; i < matricesNativeArray.Length; i++)
                     {
-                        patch.cb.DrawMesh(waterPatchMesh, (Matrix4x4)matricesNativeArray[i], patch.mat, 0, 0);
+                        patch.cb.DrawMesh(patch.mesh, (Matrix4x4)matricesNativeArray[i], patch.mat, 0, 0);
                     }
                     matricesNativeArray.Dispose();
                     return;
@@ -154,9 +147,6 @@ namespace GBufferCapture
             {
                 patch.Clear();
             }
-            patchMeshField = null;
-            matricesQueueField = null;
-            jobHandleField = null;
             GBufferCapturePlugin.instance.ClearCB();
             patchs.Clear();
         }
