@@ -21,11 +21,7 @@ Shader "Hidden/DepthPost"
 
             sampler2D _CameraDepthTexture;
             sampler2D _MainTex;
-
-            float4x4 _CameraProj;
-            float4x4 CameraToWorld;
             float _DepthCutoff;
-            float _WaterLevel;
 
             struct appdata
             {
@@ -49,32 +45,9 @@ Shader "Hidden/DepthPost"
 
             fixed4 frag(v2f i) : SV_Target
             {
-                float rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv); //0 a 1
-                float invRawDepth = 1 - rawDepth;
-
-                const float2 p11_22 = float2(_CameraProj._11, _CameraProj._22);
-                const float2 p13_31 = float2(_CameraProj._13, _CameraProj._23);
-                const float isOrtho = 0.0;
-                const float near = _ProjectionParams.y;
-                const float far = _ProjectionParams.z;
-
-                float zOrtho = lerp(near, far, invRawDepth);
-                float zPers = near * far / lerp(far, near, invRawDepth);
-                float vz = lerp(zPers, zOrtho, isOrtho);
-
-                float3 vpos = float3((i.uv * 2 - 1 - p13_31) / p11_22 * lerp(vz, 1, isOrtho), -vz);
-                float4 wpos = mul(CameraToWorld, float4(vpos, 1));
-
+                float rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
                 float depth = LinearEyeDepth(rawDepth);
-                float mask;
-                if (wpos.y > _WaterLevel)
-                {
-                    mask = 1.0 - step(2000.0, depth);
-                }
-                else
-                {
-                    mask = 1.0 - step(_DepthCutoff, depth);
-                }
+                float mask = 1.0 - step(_DepthCutoff, depth);;
                 float3 normalColor = tex2D(_MainTex, i.uv).rgb;
                 return float4(normalColor * mask, 1.0);
             }

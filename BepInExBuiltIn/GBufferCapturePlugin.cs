@@ -51,7 +51,6 @@ namespace GBufferCapture
         public static ManualLogSource Log = new ManualLogSource(PluginName);
 
         public static ConfigEntry<float> gbuffersMaxRenderDistanceEntry;
-        public static ConfigEntry<float> depthControlWaterLevelToleranceEntry;
 
         public static ConfigEntry<bool> gbuffersPreviewEnabledEntry;
         public static ConfigEntry<int> gbuffersPreviewSizeEntry;
@@ -62,7 +61,6 @@ namespace GBufferCapture
         public static ConfigEntry<SavingFormat> savingFormatEntry;
         public static ConfigEntry<int> jpgQualityEntry;
 
-        public static ConfigEntry<bool> showWaterLevelEntry;
         public static ConfigEntry<bool> saveDepthEntry;
         public static ConfigEntry<bool> saveWorldNormalEntry;
         public static ConfigEntry<bool> saveLocalNormalEntry;
@@ -82,7 +80,6 @@ namespace GBufferCapture
             instance = this;
             Directory.CreateDirectory(captureFolder);
             gbuffersMaxRenderDistanceEntry = Config.Bind("Rendering", "GBufferMaxRenderDistanceUnderwater", 200.0f, "Max saw distance by gbuffers underwater, upperwater default is 1000.0f");
-            depthControlWaterLevelToleranceEntry = Config.Bind("Rendering", "DepthControlWaterLevelTolerance", 100.0f, "the mod shaders converts depthmap to worldPos and may fail when you shake camera vertically too fast, increase this value to reduce/remove this effect error in captured gbuffers");
 
             gbuffersPreviewEnabledEntry = Config.Bind("Gui", "gbuffersPreviewEnabled", true, "toggle gbuffers captures GUI");
             gbuffersPreviewSizeEntry = Config.Bind("Gui", "gbuffersPreviewSize", 256, new ConfigDescription("width of gbuffers preview", new AcceptableValueRange<int>(100, 768)));
@@ -93,7 +90,6 @@ namespace GBufferCapture
             savingFormatEntry = Config.Bind("Capture", "SavingFormat", SavingFormat.JPG, "Define saving format extension");
             jpgQualityEntry = Config.Bind("Capture", "JPG Quality", 95, "jpg quality");
 
-            showWaterLevelEntry = Config.Bind("Capture", "showWaterLevelRT", false, "toggle showing water level rt");
             saveDepthEntry = Config.Bind("Capture", "saveDepthMap", true, "toggle saving depth map");
             saveWorldNormalEntry = Config.Bind("Capture", "saveWorldNormalMap", true, "toggle saving world normal map");
             saveLocalNormalEntry = Config.Bind("Capture", "saveLocalNormalMap", false, "toggle saving local normal map");
@@ -140,7 +136,6 @@ namespace GBufferCapture
         private CommandBuffer mainCB;
         private CommandBuffer blightCB;
 
-        private RenderTexture waterLevelRT;
         private RenderTexture mainRT;
         private RenderTexture depthRT;
         private RenderTexture worldNormalRT;
@@ -150,8 +145,6 @@ namespace GBufferCapture
         private RenderTexture aoRT;
         private RenderTexture beforeLightRT;
 
-        private Shader waterLevelShader;
-        private Material waterLevelMaterial;
         private Shader texControlDepthShader;
         private Material mcdMaterial; //monocromatic control depth
         private Shader monocromaticControlDepthShader;
@@ -173,8 +166,6 @@ namespace GBufferCapture
         {
             if (mainRT == null)
             {
-                waterLevelRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
-                waterLevelRT.Create();
                 mainRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 24, RenderTextureFormat.ARGB32);
                 mainRT.Create();
                 depthRT = new RenderTexture(mainCam.pixelWidth, mainCam.pixelHeight, 0, RenderTextureFormat.ARGBFloat);
@@ -328,7 +319,6 @@ namespace GBufferCapture
             SetupAmbientOcclusion();
 
             cb = new CommandBuffer();
-            //cb.Blit(BuiltinRenderTextureType.CameraTarget, waterLevelRT, waterLevelMaterial);
             cb.Blit(BuiltinRenderTextureType.CameraTarget, depthRT, mcdMaterial);
             cb.Blit(BuiltinRenderTextureType.GBuffer2, worldNormalRT, tcdMaterial);
             cb.Blit(BuiltinRenderTextureType.GBuffer0, albedoRT, tcdMaterial);
@@ -342,6 +332,8 @@ namespace GBufferCapture
             mainCB = new CommandBuffer();
             mainCB.Blit(BuiltinRenderTextureType.CameraTarget, mainRT);
             mainCam.AddCommandBuffer(CameraEvent.AfterEverything, mainCB);
+
+
         }
 
         public void ClearCB()
@@ -389,12 +381,6 @@ namespace GBufferCapture
                 int stackPos = 0;
                 int previewWidth = gbuffersPreviewSizeEntry.Value;
                 int previewHeight = (int)Math.Ceiling(gbuffersPreviewSizeEntry.Value * (9.0f / 16.0f));
-
-                if (showWaterLevelEntry.Value)
-                { 
-                    GUI.DrawTexture(new Rect(0, previewHeight * stackPos, previewWidth, previewHeight), waterLevelRT, ScaleMode.StretchToFill, false);
-                    stackPos++;
-                }
                 if (saveDepthEntry.Value)
                 {
                     GUI.DrawTexture(new Rect(0, previewHeight * stackPos, previewWidth, previewHeight), depthRT, ScaleMode.StretchToFill, false);
@@ -444,18 +430,15 @@ namespace GBufferCapture
 
         void LateUpdate()
         {
-            if (cb != null && mainCam != null)
+            if (cb != null && waterGBufferInjector != null)
             {
-                cb.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
-                cb.SetGlobalMatrix("CameraToWorld", mainCam.cameraToWorldMatrix);
-                cb.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistanceEntry.Value);
-                if (UnderWaterListener_Patch.IsUnderWater())
+                if (waterGBufferInjector.IsCameraAboveWater())
                 {
-                    cb.SetGlobalFloat("_WaterLevel", depthControlWaterLevelToleranceEntry.Value);
+                    cb.SetGlobalFloat("_DepthCutoff", 2000.0f);
                 }
                 else
                 {
-                    cb.SetGlobalFloat("_WaterLevel", -depthControlWaterLevelToleranceEntry.Value);
+                    cb.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistanceEntry.Value);
                 }
             }
         }
@@ -464,6 +447,7 @@ namespace GBufferCapture
         private bool isCapturing = false;
         private float timer = 0f;
         private static bool modCoreEnabled = false;
+        WaterGBufferInjector waterGBufferInjector;
 
         void Update()
         {
@@ -481,7 +465,7 @@ namespace GBufferCapture
                         Debug.LogWarning("mod core starting");
                         Utils.ToggleParts(!removeScubaMaskEntry.Value, !removeBreathBubblesEntry.Value, !removeWaterParticlesEntry.Value);
                         gbufferCam = CreateNewCam("gBufferCam", mainCam);
-                        gbufferCam.gameObject.AddComponent<WaterGBufferInjector>();
+                        waterGBufferInjector = gbufferCam.gameObject.AddComponent<WaterGBufferInjector>();
                         SetupCB();
                         gbufferCam.gameObject.AddComponent<DayNightPatch>();
                         if (Player.main != null)

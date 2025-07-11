@@ -5,6 +5,7 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 
 namespace GBufferCapture
@@ -50,6 +51,11 @@ namespace GBufferCapture
 
         void LateUpdate()
         {
+            UpdateGBuffer();
+        }
+
+        private void UpdateGBuffer()
+        {
             cb.Clear();
             Mesh waterMesh = WaterSurfacePatcher.LastFrameMesh;
             Matrix4x4[] waterMatrices = WaterSurfacePatcher.LastFrameMatrices;
@@ -67,6 +73,53 @@ namespace GBufferCapture
                 cb.DrawMesh(waterMesh, waterMatrices[i], waterSurfaceMat, 0, 0);
             }
         }
+
+        private float uvScale = 100.0f;
+        private float displacementScale = 0.01f;
+        private Texture2D displacementReadTexture;
+
+        public bool IsCameraAboveWater()
+        {
+            float waterHeightAtCamera = cam.transform.position.y;
+            Matrix4x4[] waterMatrices = WaterSurfacePatcher.LastFrameMatrices;
+            if (waterMatrices == null || waterMatrices.Length == 0)
+            {
+                return true; 
+            }
+            WaterSurface waterSurface = WaterSurface.Get();
+            if (waterSurface == null) return true;
+            Texture displacementRT = waterSurface.GetDisplacementTexture();
+            if (displacementRT == null) return true;
+            float waterBaseHeight = waterMatrices[0].GetColumn(3).y;
+            float patchLength = waterSurface.GetPatchLength();
+            if (patchLength == 0) return true;
+            Vector3 cameraPos = cam.transform.position;
+            Vector2 uv = new Vector2(cameraPos.x, cameraPos.z) * uvScale / patchLength;
+            uv.x = uv.x - Mathf.Floor(uv.x);
+            uv.y = uv.y - Mathf.Floor(uv.y);
+            Color displacementColor = ReadPixelFromRenderTexture(displacementRT, uv);
+            float verticalDisplacement = (displacementColor.g - 0.5f) * 2.0f;
+            float displacementY = displacementColor.g;
+            float finalDisplacement = displacementY * displacementScale;
+            waterHeightAtCamera = waterBaseHeight + finalDisplacement;
+            return cameraPos.y >= waterHeightAtCamera;
+        }
+
+        private Color ReadPixelFromRenderTexture(Texture rt, Vector2 uv)
+        {
+            if (displacementReadTexture == null || displacementReadTexture.width != rt.width || displacementReadTexture.height != rt.height)
+            {
+                if (displacementReadTexture != null) Destroy(displacementReadTexture);
+                displacementReadTexture = new Texture2D(rt.width, rt.height, rt.graphicsFormat, TextureCreationFlags.None);
+            }
+            RenderTexture active = RenderTexture.active;
+            RenderTexture.active = (RenderTexture) rt;
+            displacementReadTexture.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+            displacementReadTexture.Apply();
+            RenderTexture.active = active;
+            return displacementReadTexture.GetPixelBilinear(uv.x, uv.y);
+        }
+
     }
  
     [HarmonyPatch]
