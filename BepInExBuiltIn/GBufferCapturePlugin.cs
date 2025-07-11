@@ -44,9 +44,6 @@ namespace GBufferCapture
         public static string assetBundlePath = Paths.PluginPath + "\\GBufferCapture\\Shaders\\bundle";
         public static string captureFolder = Paths.PluginPath + "\\GBufferCapture\\captures";
 
-        public int captureWidth => captureWidthEntry.Value;
-        public int captureHeight => captureHeightEntry.Value;
-
         private const string MyGUID = "com.Salu.GBufferCapture";
         private const string PluginName = "GBufferCapture";
         private const string VersionString = "1.0.0";
@@ -135,8 +132,6 @@ namespace GBufferCapture
             }
             totalCaptures = uniqueFiles.Count;
         }
-
-        public static float gbuffersMaxRenderDistance => gbuffersMaxRenderDistanceEntry.Value;
 
         private Camera mainCam;
         private Camera gbufferCam; //this camera is useful because injected CustomWaterSurface messes with the final render
@@ -453,7 +448,7 @@ namespace GBufferCapture
             {
                 cb.SetGlobalMatrix("_CameraProj", mainCam.projectionMatrix);
                 cb.SetGlobalMatrix("CameraToWorld", mainCam.cameraToWorldMatrix);
-                cb.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistance);
+                cb.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistanceEntry.Value);
                 if (UnderWaterListener_Patch.IsUnderWater())
                 {
                     cb.SetGlobalFloat("_WaterLevel", depthControlWaterLevelToleranceEntry.Value);
@@ -487,7 +482,6 @@ namespace GBufferCapture
                         Utils.ToggleParts(!removeScubaMaskEntry.Value, !removeBreathBubblesEntry.Value, !removeWaterParticlesEntry.Value);
                         gbufferCam = CreateNewCam("gBufferCam", mainCam);
                         gbufferCam.gameObject.AddComponent<WaterGBufferInjector>();
-                        //mainCam.gameObject.AddComponent<WaterGBufferInjector>();
                         SetupCB();
                         gbufferCam.gameObject.AddComponent<DayNightPatch>();
                         if (Player.main != null)
@@ -545,6 +539,8 @@ namespace GBufferCapture
                 default:
                     throw new NotSupportedException($"Unsupported saving type: {savingFormatEntry.Value}");
             }
+            int captureWidth = captureWidthEntry.Value;
+            int captureHeight = captureHeightEntry.Value;
             if (saveDepthEntry.Value) saveFunc($"{timestamp}_depth", depthRT, captureWidth, captureHeight);
             if (saveWorldNormalEntry.Value) saveFunc($"{timestamp}_world_normal", worldNormalRT, captureWidth, captureHeight);
             if (saveLocalNormalEntry.Value) saveFunc($"{timestamp}_local_normal", localNormalRT, captureWidth, captureHeight);
