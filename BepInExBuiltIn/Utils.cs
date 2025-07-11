@@ -170,5 +170,60 @@ namespace GBufferCapture
             RenderTexture.ReleaseTemporary(rtHalf);
         }
 
+        public static void ToggleScubaMask(bool active)
+        {
+            //most screen trash uses a component called "HideForScreenshots"
+            Transform player = Player.main?.transform;
+            if (player == null)
+            {
+                return;
+            }
+            Transform scubaMask = player.Find("camPivot/camRoot/camOffset/pdaCamPivot/SpawnPlayerMask");
+            if (scubaMask == null)
+            {
+                return;
+            }
+            scubaMask.gameObject.SetActive(active);
+        }
+
+        public static void TogglePlayerBreathBubbles(bool active)
+        {
+            PlayerBreathBubbles[] bubbles = UnityEngine.Object.FindObjectsOfType<PlayerBreathBubbles>();
+            foreach (PlayerBreathBubbles bubbleController in bubbles)
+            {
+                bubbleController.enabled = active;
+            }
+        }
+
+        public static void ToggleWaterParticlesSpawner(bool active)
+        {
+            Transform player = Player.main?.transform;
+            if (player == null)
+            {
+                return;
+            }
+            Transform waterParticles = player.Find("camPivot/camRoot/camOffset/pdaCamPivot/SpawnPlayerFX/PlayerFX(Clone)/WaterParticlesSpawner");
+            if (waterParticles == null)
+            {
+                Debug.LogError("WaterParticlesSpawner not found");
+                return;
+            }
+            waterParticles.gameObject.SetActive(active);
+        }
+
+        public static void ToggleParts(bool scubamask, bool breathBubbles, bool waterParticles)
+        {
+            try
+            {
+                ToggleScubaMask(scubamask);
+                TogglePlayerBreathBubbles(breathBubbles);
+                ToggleWaterParticlesSpawner(waterParticles);
+            }
+            catch (Exception e)
+            {
+                //NullReferenceException, probably changed to menu scene
+            }
+        }
+
     }
 }

@@ -136,61 +136,6 @@ namespace GBufferCapture
             totalCaptures = uniqueFiles.Count;
         }
 
-        private void ToggleScubaMask(bool active)
-        {
-            //most screen trash uses a component called "HideForScreenshots"
-            Transform player = Player.main?.transform;
-            if (player == null)
-            {
-                return;
-            }
-            Transform scubaMask = player.Find("camPivot/camRoot/camOffset/pdaCamPivot/SpawnPlayerMask");
-            if (scubaMask == null)
-            {
-                return;
-            }
-            scubaMask.gameObject.SetActive(active);
-        }
-
-        private void TogglePlayerBreathBubbles(bool active)
-        {
-            PlayerBreathBubbles[] bubbles = FindObjectsOfType<PlayerBreathBubbles>();
-            foreach (PlayerBreathBubbles bubbleController in bubbles)
-            { 
-                bubbleController.enabled = active;
-            }
-        }
-
-        private void ToggleWaterParticlesSpawner(bool active)
-        {
-            Transform player = Player.main?.transform;
-            if (player == null)
-            {
-                return;
-            }
-            Transform waterParticles = player.Find("camPivot/camRoot/camOffset/pdaCamPivot/SpawnPlayerFX/PlayerFX(Clone)/WaterParticlesSpawner");
-            if (waterParticles == null)
-            {
-                Debug.LogError("WaterParticlesSpawner not found");
-                return;
-            }
-            waterParticles.gameObject.SetActive(active);
-        }
-
-        private void ToggleParts()
-        {
-            try
-            {
-                ToggleScubaMask(!removeScubaMaskEntry.Value);
-                TogglePlayerBreathBubbles(!removeBreathBubblesEntry.Value);
-                ToggleWaterParticlesSpawner(!removeWaterParticlesEntry.Value);
-            }
-            catch (Exception e)
-            {
-                //NullReferenceException, probably changed to menu scene
-            }
-        }
-
         public static float gbuffersMaxRenderDistance => gbuffersMaxRenderDistanceEntry.Value;
 
         private Camera mainCam;
@@ -289,7 +234,7 @@ namespace GBufferCapture
             localNormalCB.Blit(localNormalRT, localNormalTempRT, tcdMaterial);
             localNormalCB.Blit(localNormalTempRT, localNormalRT);
             localNormalCB.ReleaseTemporaryRT(localNormalTempRT);
-            mainCam.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, localNormalCB); //needs to be at mainCam!
+            gbufferCam.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, localNormalCB); //needs to be at mainCam!
         }
 
         private void SetupAmbientOcclusion()
@@ -429,9 +374,7 @@ namespace GBufferCapture
             blightCB?.Release();
             blightCB = null;
 
-            injectorInstance = null;
-
-            ToggleParts();
+            Utils.ToggleParts(!removeScubaMaskEntry.Value, !removeBreathBubblesEntry.Value, !removeWaterParticlesEntry.Value);
 
             if (Player.main != null)
             { 
@@ -439,19 +382,7 @@ namespace GBufferCapture
             }
 
             isCapturing = false;
-            debugTimer = false;
             modCoreEnabled = false;
-        }
-
-        private WaterGBufferInjector injectorInstance;
-
-        void InjectCustomWaterSurface(Camera cam)
-        {
-            if (injectorInstance != null)
-            {
-                return;
-            }
-            injectorInstance = cam.gameObject.AddComponent<WaterGBufferInjector>();
         }
 
         private GUIStyle labelStyle;
@@ -505,7 +436,7 @@ namespace GBufferCapture
                     stackPos++;
                 }
             }
-            string labelText = $"Mod Core {(cb == null ? "Disabled" : "Enabled")}\nCapture {(isCapturing ? "Enabled" : "Disabled")}\nTotal Captures: {totalCaptures}\nCapture Interval: {captureIntervalEntry.Value}s";
+            string labelText = $"Mod Core {(modCoreEnabled ? "Disabled" : "Enabled")}\nCapture {(isCapturing ? "Enabled" : "Disabled")}\nTotal Captures: {totalCaptures}\nCapture Interval: {captureIntervalEntry.Value}s";
             if (labelStyle == null)
             {
                 labelStyle = new GUIStyle(GUI.skin.label);
@@ -516,31 +447,6 @@ namespace GBufferCapture
             GUI.Label(new Rect(10, 950, 300, 200), labelText, labelStyle);
         }
 
-        private bool debugTimer = false;
-        private double realTime;
-
-        private void SetNight()
-        {
-            DayNightCycle.main.debugFreeze = true;
-            realTime = DayNightCycle.main.timePassedAsDouble;
-            DayNightCycle.main.SetDayNightTime(0.0f);
-        }
-
-        private void RestoreTime(double time)
-        {
-            DayNightCycle.main.timePassedAsDouble = time;
-            AccessTools.Method(typeof(DayNightCycle), "UpdateAtmosphere").Invoke(DayNightCycle.main, null);
-            AccessTools.Field(typeof(DayNightCycle), "skipTimeMode").SetValue(DayNightCycle.main, false);
-            //do not trigger DayNightCycle.main.dayNightCycleChangedEvent!
-        }
-
-        private void UpdateTime()
-        {
-            DayNightCycle.main.timePassedAsDouble += DayNightCycle.main.deltaTime;
-        }
-
-        private float depthControlWaterLevel => depthControlWaterLevelToleranceEntry.Value;
-
         void LateUpdate()
         {
             if (cb != null && mainCam != null)
@@ -550,11 +456,11 @@ namespace GBufferCapture
                 cb.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistance);
                 if (UnderWaterListener_Patch.IsUnderWater())
                 {
-                    cb.SetGlobalFloat("_WaterLevel", depthControlWaterLevel);
+                    cb.SetGlobalFloat("_WaterLevel", depthControlWaterLevelToleranceEntry.Value);
                 }
                 else
                 {
-                    cb.SetGlobalFloat("_WaterLevel", -depthControlWaterLevel);
+                    cb.SetGlobalFloat("_WaterLevel", -depthControlWaterLevelToleranceEntry.Value);
                 }
             }
         }
@@ -562,9 +468,7 @@ namespace GBufferCapture
         private static int totalCaptures = 0;
         private bool isCapturing = false;
         private float timer = 0f;
-        private int captureNext = 0;
         private static bool modCoreEnabled = false;
-
 
         void Update()
         {
@@ -579,17 +483,13 @@ namespace GBufferCapture
                     mainCam = FindObjectOfType<WaterSurfaceOnCamera>()?.gameObject.GetComponent<Camera>();
                     if (mainCam != null)
                     {
-                        Debug.LogWarning("mod core started");
-                        ToggleParts();
+                        Debug.LogWarning("mod core starting");
+                        Utils.ToggleParts(!removeScubaMaskEntry.Value, !removeBreathBubblesEntry.Value, !removeWaterParticlesEntry.Value);
                         gbufferCam = CreateNewCam("gBufferCam", mainCam);
-                        InjectCustomWaterSurface(gbufferCam);
-                        InjectCustomWaterSurface(mainCam);
+                        gbufferCam.gameObject.AddComponent<WaterGBufferInjector>();
+                        //mainCam.gameObject.AddComponent<WaterGBufferInjector>();
                         SetupCB();
-                        if (DayNightCycle.main != null)
-                        { 
-                            captureNext = 3;
-                            SetNight();
-                        }
+                        gbufferCam.gameObject.AddComponent<DayNightPatch>();
                         if (Player.main != null)
                         { 
                             Player.main.gameObject.AddComponent<BaseOnEmission>();
@@ -604,21 +504,6 @@ namespace GBufferCapture
                 isCapturing = !isCapturing;
             }
 
-            //makeshift solution
-            if (captureNext > 0)
-            {
-                captureNext--;
-                if (captureNext == 0)
-                { 
-                    RestoreTime(realTime);
-                    debugTimer = true;
-                }
-            }
-
-            if (debugTimer)
-            {
-                UpdateTime();
-            }
 
             if (Input.GetKeyDown(KeyCode.F9))
             {
