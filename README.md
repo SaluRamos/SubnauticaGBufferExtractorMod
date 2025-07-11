@@ -30,7 +30,7 @@ F9 takes a single capture.
   
 RECOMMENDATIONS:  
 - use dev commands such as "daynightspeed 100" to increase light diversity in you dataset. (SHIFT + ENTER opens command entry)  
-- The emission map approximation is calculated based on the difference between the final render and the albedo/specular map, acting as a mask for pixels that are brighter. It will capture strong reflections, avoid using flashlight.  
+- In graphics disable "motion blur" and "lens dirt"
   
 ## Requirements
 - https://github.com/BepInEx/BepInEx  
