@@ -179,9 +179,16 @@ namespace GBufferCapture
 
         private void ToggleParts()
         {
-            ToggleScubaMask(!removeScubaMaskEntry.Value);
-            TogglePlayerBreathBubbles(!removeBreathBubblesEntry.Value);
-            ToggleWaterParticlesSpawner(!removeWaterParticlesEntry.Value);
+            try
+            {
+                ToggleScubaMask(!removeScubaMaskEntry.Value);
+                TogglePlayerBreathBubbles(!removeBreathBubblesEntry.Value);
+                ToggleWaterParticlesSpawner(!removeWaterParticlesEntry.Value);
+            }
+            catch (Exception e)
+            {
+                //NullReferenceException, probably changed to menu scene
+            }
         }
 
         public static float gbuffersMaxRenderDistance => gbuffersMaxRenderDistanceEntry.Value;
@@ -282,7 +289,7 @@ namespace GBufferCapture
             localNormalCB.Blit(localNormalRT, localNormalTempRT, tcdMaterial);
             localNormalCB.Blit(localNormalTempRT, localNormalRT);
             localNormalCB.ReleaseTemporaryRT(localNormalTempRT);
-            gbufferCam.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, localNormalCB);
+            mainCam.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, localNormalCB); //needs to be at mainCam!
         }
 
         private void SetupAmbientOcclusion()
@@ -366,7 +373,7 @@ namespace GBufferCapture
             aoCB.SetGlobalTexture(Shader.PropertyToID("_MainTex"), occlusionTexture);
             aoCB.Blit(occlusionTexture, aoRT, aoMaterial2, 8);
             aoCB.ReleaseTemporaryRT(occlusionTexture);
-            gbufferCam.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, aoCB);
+            mainCam.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, aoCB); //needs to be at mainCam!
         }
 
         private void SetupCB()
@@ -426,7 +433,14 @@ namespace GBufferCapture
 
             ToggleParts();
 
-            Destroy(Player.main.gameObject.GetComponent<BaseOnEmission>());
+            if (Player.main != null)
+            { 
+                Destroy(Player.main.gameObject.GetComponent<BaseOnEmission>());
+            }
+
+            isCapturing = false;
+            debugTimer = false;
+            modCoreEnabled = false;
         }
 
         private WaterGBufferInjector injectorInstance;
@@ -452,12 +466,12 @@ namespace GBufferCapture
 
                 if (showWaterLevelEntry.Value)
                 { 
-                    GUI.DrawTexture(new Rect(0, 0, previewWidth, previewHeight), waterLevelRT, ScaleMode.StretchToFill, false);
+                    GUI.DrawTexture(new Rect(0, previewHeight * stackPos, previewWidth, previewHeight), waterLevelRT, ScaleMode.StretchToFill, false);
                     stackPos++;
                 }
                 if (saveDepthEntry.Value)
                 {
-                    GUI.DrawTexture(new Rect(0, 0, previewWidth, previewHeight), depthRT, ScaleMode.StretchToFill, false);
+                    GUI.DrawTexture(new Rect(0, previewHeight * stackPos, previewWidth, previewHeight), depthRT, ScaleMode.StretchToFill, false);
                     stackPos++;
                 }
                 if (saveWorldNormalEntry.Value)
@@ -548,15 +562,15 @@ namespace GBufferCapture
         private static int totalCaptures = 0;
         private bool isCapturing = false;
         private float timer = 0f;
-        private float captureInterval => captureIntervalEntry.Value;
-
         private int captureNext = 0;
+        private static bool modCoreEnabled = false;
+
 
         void Update()
         {
             if (Input.GetKeyDown(KeyCode.F11))
             {
-                if (gbufferCam != null)
+                if (modCoreEnabled)
                 {
                     ClearCB();
                 }
@@ -569,15 +583,23 @@ namespace GBufferCapture
                         ToggleParts();
                         gbufferCam = CreateNewCam("gBufferCam", mainCam);
                         InjectCustomWaterSurface(gbufferCam);
+                        InjectCustomWaterSurface(mainCam);
                         SetupCB();
-                        captureNext = 3;
-                        SetNight();
-                        Player.main.gameObject.AddComponent<BaseOnEmission>();
+                        if (DayNightCycle.main != null)
+                        { 
+                            captureNext = 3;
+                            SetNight();
+                        }
+                        if (Player.main != null)
+                        { 
+                            Player.main.gameObject.AddComponent<BaseOnEmission>();
+                        }
+                        modCoreEnabled = true;
                     }
                 }
             }
 
-            if (Input.GetKeyDown(KeyCode.F10))
+            if (Input.GetKeyDown(KeyCode.F10) && cb != null)
             {
                 isCapturing = !isCapturing;
             }
@@ -615,7 +637,7 @@ namespace GBufferCapture
             if (isCapturing && cb != null)
             {
                 timer += Time.deltaTime;
-                if (timer >= captureInterval)
+                if (timer >= captureIntervalEntry.Value)
                 {
                     timer = 0f;
                     SaveCaptures();

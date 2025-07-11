@@ -67,7 +67,6 @@ namespace GBufferCapture
                 cb.DrawMesh(waterMesh, waterMatrices[i], waterSurfaceMat, 0, 0);
             }
         }
-
     }
  
     [HarmonyPatch]
@@ -102,38 +101,31 @@ namespace GBufferCapture
                 return;
             }
 
-            try
+            JobHandle jobHandle = (JobHandle) jobHandleField.GetValue(__instance);
+            jobHandle.Complete();
+
+            Mesh currentMesh = patchMeshField.GetValue(__instance) as Mesh;
+            var waterMatricesQueue = (NativeQueue<float4x4>) matricesQueueField.GetValue(__instance);
+
+            if (currentMesh == null || !waterMatricesQueue.IsCreated || waterMatricesQueue.Count == 0)
             {
-                JobHandle jobHandle = (JobHandle) jobHandleField.GetValue(__instance);
-                jobHandle.Complete();
-
-                Mesh currentMesh = patchMeshField.GetValue(__instance) as Mesh;
-                var waterMatricesQueue = (NativeQueue<float4x4>) matricesQueueField.GetValue(__instance);
-
-                if (currentMesh == null || !waterMatricesQueue.IsCreated || waterMatricesQueue.Count == 0)
-                {
-                    LastFrameMesh = null;
-                    LastFrameMatrices = null;
-                    return;
-                }
-
-                LastFrameMesh = currentMesh;
-                NativeArray<float4x4> matricesNativeArray = waterMatricesQueue.ToArray(Allocator.Temp);
-                if (LastFrameMatrices == null || LastFrameMatrices.Length != matricesNativeArray.Length)
-                {
-                    LastFrameMatrices = new Matrix4x4[matricesNativeArray.Length];
-                }
-                for (int i = 0; i < matricesNativeArray.Length; i++)
-                {
-                    LastFrameMatrices[i] = matricesNativeArray[i];
-                }
-
-                matricesNativeArray.Dispose();
-            } 
-            catch 
-            {
-                Clear();
+                LastFrameMesh = null;
+                LastFrameMatrices = null;
+                return;
             }
+
+            LastFrameMesh = currentMesh;
+            NativeArray<float4x4> matricesNativeArray = waterMatricesQueue.ToArray(Allocator.Temp);
+            if (LastFrameMatrices == null || LastFrameMatrices.Length != matricesNativeArray.Length)
+            {
+                LastFrameMatrices = new Matrix4x4[matricesNativeArray.Length];
+            }
+            for (int i = 0; i < matricesNativeArray.Length; i++)
+            {
+                LastFrameMatrices[i] = matricesNativeArray[i];
+            }
+
+            matricesNativeArray.Dispose();
         }
 
         [HarmonyPatch(typeof(HeightFieldMesh), "BeginRender")]

@@ -152,15 +152,22 @@ namespace GBufferCapture
 
         private void RestoreStructureLights(LightingController.MultiStatesSky sky)
         {
-            sky.masterIntensities = masterIntensities;
-            sky.diffIntensities = diffIntensities;
-            sky.specIntensities = specIntensities;
-            AccessTools.Field(typeof(LightingController.MultiStatesSky), "startMasterIntensity").SetValue(sky, startMasterIntensity);
-            AccessTools.Field(typeof(LightingController.MultiStatesSky), "startDiffuseIntensity").SetValue(sky, startDiffuseIntensity);
-            AccessTools.Field(typeof(LightingController.MultiStatesSky), "startSpecIntensity").SetValue(sky, startSpecIntensity);
-            sky.sky.MasterIntensity = MasterIntensity;
-            sky.sky.DiffIntensity = DiffIntensity;
-            sky.sky.SpecIntensity = SpecIntensity;
+            try
+            {
+                sky.masterIntensities = masterIntensities;
+                sky.diffIntensities = diffIntensities;
+                sky.specIntensities = specIntensities;
+                AccessTools.Field(typeof(LightingController.MultiStatesSky), "startMasterIntensity").SetValue(sky, startMasterIntensity);
+                AccessTools.Field(typeof(LightingController.MultiStatesSky), "startDiffuseIntensity").SetValue(sky, startDiffuseIntensity);
+                AccessTools.Field(typeof(LightingController.MultiStatesSky), "startSpecIntensity").SetValue(sky, startSpecIntensity);
+                sky.sky.MasterIntensity = MasterIntensity;
+                sky.sky.DiffIntensity = DiffIntensity;
+                sky.sky.SpecIntensity = SpecIntensity;
+            }
+            catch (Exception ex)
+            {
+                //probably changed to menu scene
+            }
         }
 
     }
