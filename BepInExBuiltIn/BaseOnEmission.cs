@@ -15,7 +15,7 @@ namespace GBufferCapture
     {
 
         public static BaseOnEmission main;
-        private bool lightStatus;
+        private bool lightStatus = true;
         private Light playerLight;
 
         void OnDestroy()
@@ -45,19 +45,24 @@ namespace GBufferCapture
             playerLight.range = 200f;
             playerLight.intensity = 1f;
             playerLight.spotAngle = 179f;
-            OnSubChanged(null);
+            AutoUpdateLight();
             Player.main.currentSubChangedEvent.AddHandler(this, OnSubChanged);
             SubscribeToPowerRelay();
             UpdateAllSubRootLights();
         }
 
-        ////plan B
-        //void LateUpdate()
-        //{
-        //    bool isInside = Player.main.IsInside();
-        //    bool isPowered = Player.main.CanBreathe();
-        //    UpdateLights(isInside && isPowered);
-        //}
+        //plan B
+        // void LateUpdate()
+        // {
+        //     AutoUpdateLight();
+        // }
+
+        private void AutoUpdateLight()
+        { 
+            bool isInside = Player.main.IsInside();
+            bool isPowered = Player.main.CanBreathe();
+            UpdateLights(isInside && isPowered);
+        }
 
         private void SubscribeToPowerRelay()
         {
