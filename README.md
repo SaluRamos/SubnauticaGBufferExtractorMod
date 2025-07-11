@@ -9,9 +9,7 @@ the captured gbuffers are:
 - Albedo Map (WORKING)  
 - Specular Map (WORKING)  
 - Ambient Occlusion (WORKING)  
-- Before Lightning (WORKING)  
-- SkyBox (WORKING)
-- Emission Map (WORKING APPROXIMATION BUT NOT IN REAL TIME)  
+- Before Lightning (WORKING, USED AS EMISSION MAP APPROXIMATION)  
 - ShaderID/Segmentation per Material (NOT SUPPORTED YET)  
   
 ![alt text](readme_images/image.png)
@@ -41,7 +39,6 @@ RECOMMENDATIONS:
 ## Utils
 For those who want to improve this project.  
 use Unity 2019.4.36f1: https://unity.com/releases/editor/archive  
-Compile the shaders inside Unity Project, just by executing: Build -> Build Shader AssetBundle.  
 
 - https://github.com/yukieiji/UnityExplorer (very useful to inspect gameobjects ingame)  
 - https://github.com/AssetRipper/AssetRipper (very useful to decompile subnautica and read every script/shader of the game, remember to use "decompile" shader option)  
