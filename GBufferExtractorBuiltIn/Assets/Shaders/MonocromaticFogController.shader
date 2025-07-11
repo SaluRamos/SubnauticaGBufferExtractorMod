@@ -15,7 +15,6 @@ Shader "Hidden/DepthPost"
             #include "UnityCG.cginc"
 
             sampler2D _CameraDepthTexture;
-            sampler2D _MainTex;
 
             float4x4 _CameraProj;
             float4x4 CameraToWorld;
@@ -66,11 +65,8 @@ Shader "Hidden/DepthPost"
                     float clippedDepth = saturate(worldDepth / 2000.0); //saturate restringe de 0 a 1
                     return fixed4(clippedDepth, clippedDepth, clippedDepth, 1.0);
                 }
-                else
-                {
-                    float clippedDepth = saturate(worldDepth / _DepthCutoff);
-                    return fixed4(clippedDepth, clippedDepth, clippedDepth, 1.0);
-                }
+                float clippedDepth = saturate(worldDepth / _DepthCutoff);
+                return fixed4(clippedDepth, clippedDepth, clippedDepth, 1.0);
             }
             ENDCG
         }

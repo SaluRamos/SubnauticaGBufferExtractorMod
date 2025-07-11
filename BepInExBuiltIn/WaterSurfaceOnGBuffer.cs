@@ -13,31 +13,27 @@ namespace GBufferCapture
     [RequireComponent(typeof(Camera))]
     public class WaterGBufferInjector : MonoBehaviour
     {
-        private CommandBuffer cb;
-        private Material waterSurfaceMat;
+
+        public CommandBuffer cb;
+        public Material waterSurfaceMat;
         private Camera cam;
-        public WaterSurfacePatcherInfo patch;
 
         void Awake()
         {
             cam = GetComponent<Camera>();
+
             Shader waterSurfaceShader = Utils.LoadExternalShader("WaterSurface");
-            if (cam == null || waterSurfaceShader == null)
-            {
-                Destroy(this);
-                return;
-            }
             waterSurfaceMat = new Material(waterSurfaceShader);
+
             cb = new CommandBuffer();
-            cb.name = "Water G-Buffer Pre-Pass";
+            cb.name = "Water On GBuffer";
             cam.AddCommandBuffer(CameraEvent.BeforeGBuffer, cb);
-            patch = new WaterSurfacePatcherInfo(cam, cb, waterSurfaceMat);
-            WaterSurfacePatcher.AddPatch(patch);
+
+            WaterSurfacePatcher.Initialize();
         }
 
         void OnDestroy()
         {
-            Debug.LogWarning("Destroying WaterGBufferInjector");
             if (cam != null && cb != null)
             {
                 cam.RemoveCommandBuffer(CameraEvent.BeforeGBuffer, cb);
@@ -52,50 +48,48 @@ namespace GBufferCapture
             }
         }
 
-    }
-
-    public class WaterSurfacePatcherInfo
-    {
-
-        public Camera cam;
-        public CommandBuffer cb;
-        public Material mat;
-        public Mesh mesh;
-
-        public WaterSurfacePatcherInfo(Camera cam, CommandBuffer cb, Material mat)
+        void LateUpdate()
         {
-            this.cam = cam;
-            this.cb = cb;
-            this.mat = mat;
-        }
-
-        public void Clear()
-        {
-            cb = null;
-            mat = null;
-            cam = null;
-            mesh = null;
+            cb.Clear();
+            Mesh waterMesh = WaterSurfacePatcher.LastFrameMesh;
+            Matrix4x4[] waterMatrices = WaterSurfacePatcher.LastFrameMatrices;
+            if (waterMesh == null || waterMatrices == null || waterMatrices.Length == 0)
+            {
+                return;
+            }
+            WaterSurface waterSurface = WaterSurface.Get();
+            var normalsTex = (RenderTexture)AccessTools.Field(typeof(WaterSurface), "normalsTexture").GetValue(waterSurface);
+            waterSurfaceMat.SetTexture("_WaterDisplacementMap", waterSurface.GetDisplacementTexture());
+            waterSurfaceMat.SetTexture("_NormalsTex", normalsTex);
+            waterSurfaceMat.SetFloat("_WaterPatchLength", waterSurface.GetPatchLength());
+            for (int i = 0; i < waterMatrices.Length; i++)
+            {
+                cb.DrawMesh(waterMesh, waterMatrices[i], waterSurfaceMat, 0, 0);
+            }
         }
 
     }
-
+ 
     [HarmonyPatch]
     public class WaterSurfacePatcher
     {
 
-        private static List<WaterSurfacePatcherInfo> patchs = new List<WaterSurfacePatcherInfo>();
+        public static Mesh LastFrameMesh { get; private set; }
+        public static Matrix4x4[] LastFrameMatrices { get; private set; }
+
         private static FieldInfo patchMeshField;
         private static FieldInfo matricesQueueField;
         private static FieldInfo jobHandleField;
+        private static bool isInitialized = false;
 
-        public static void AddPatch(WaterSurfacePatcherInfo patch)
+        public static void Initialize()
         {
-            patchs.Add(patch);
-            if (patchMeshField == null)
+            if (!isInitialized)
             {
                 patchMeshField = AccessTools.Field(typeof(HeightFieldMesh), "patchMesh");
                 matricesQueueField = AccessTools.Field(typeof(HeightFieldMesh), "matrices");
                 jobHandleField = AccessTools.Field(typeof(HeightFieldMesh), "jobHandle");
+                isInitialized = true;
             }
         }
 
@@ -103,64 +97,88 @@ namespace GBufferCapture
         [HarmonyPrefix]
         public static void FinalizeRender_Prefix(HeightFieldMesh __instance)
         {
-            foreach (var patch in patchs)
+            if (!isInitialized)
             {
-                if (patch.cb == null || patchMeshField == null)
+                return;
+            }
+
+            try
+            {
+                JobHandle jobHandle = (JobHandle) jobHandleField.GetValue(__instance);
+                jobHandle.Complete();
+
+                Mesh currentMesh = patchMeshField.GetValue(__instance) as Mesh;
+                var waterMatricesQueue = (NativeQueue<float4x4>) matricesQueueField.GetValue(__instance);
+
+                if (currentMesh == null || !waterMatricesQueue.IsCreated || waterMatricesQueue.Count == 0)
                 {
+                    LastFrameMesh = null;
+                    LastFrameMatrices = null;
                     return;
                 }
 
-                try
+                LastFrameMesh = currentMesh;
+                NativeArray<float4x4> matricesNativeArray = waterMatricesQueue.ToArray(Allocator.Temp);
+                if (LastFrameMatrices == null || LastFrameMatrices.Length != matricesNativeArray.Length)
                 {
-                    JobHandle jobHandle = (JobHandle) jobHandleField.GetValue(__instance);
-                    jobHandle.Complete();
-                    patch.cb.Clear();
-
-                    patch.mesh = patchMeshField.GetValue(__instance) as Mesh;
-                    var waterMatricesQueue = (NativeQueue<float4x4>) matricesQueueField.GetValue(__instance);
-
-                    if (patch.mesh == null || !waterMatricesQueue.IsCreated || waterMatricesQueue.Count == 0)
-                    {
-                        return;
-                    }
-
-                    WaterSurface waterSurface = WaterSurface.Get();
-                    var normalsTex = (RenderTexture)AccessTools.Field(typeof(WaterSurface), "normalsTexture").GetValue(waterSurface);
-                    var displacementGenerator = AccessTools.Field(typeof(WaterSurface), "displacementGenerator").GetValue(waterSurface);
-                    var choppyScale = (float)AccessTools.Field(displacementGenerator.GetType(), "choppyScale").GetValue(displacementGenerator);
-                    var waterLevel = waterSurface.transform.position.y + waterSurface.waterOffset;
-
-                    patch.mat.SetTexture("_WaterDisplacementMap", waterSurface.GetDisplacementTexture());
-                    patch.mat.SetTexture("_NormalsTex", normalsTex);
-                    patch.mat.SetFloat("_WaterPatchLength", waterSurface.GetPatchLength());
-
-                    NativeArray<float4x4> matricesNativeArray = waterMatricesQueue.ToArray(Allocator.Temp);
-                    for (int i = 0; i < matricesNativeArray.Length; i++)
-                    {
-                        patch.cb.DrawMesh(patch.mesh, (Matrix4x4)matricesNativeArray[i], patch.mat, 0, 0);
-                    }
-                    matricesNativeArray.Dispose();
-                    return;
-                } 
-                catch 
-                {
-                    Clear();
-                    return;
+                    LastFrameMatrices = new Matrix4x4[matricesNativeArray.Length];
                 }
+                for (int i = 0; i < matricesNativeArray.Length; i++)
+                {
+                    LastFrameMatrices[i] = matricesNativeArray[i];
+                }
+
+                matricesNativeArray.Dispose();
+            } 
+            catch 
+            {
+                Clear();
+            }
+        }
+
+        [HarmonyPatch(typeof(HeightFieldMesh), "BeginRender")]
+        class DisableCullingPatch
+        {
+            private static FieldInfo waterSurfaceHfmField;
+
+            static bool Prepare()
+            {
+                waterSurfaceHfmField = AccessTools.Field(typeof(WaterSurface), "surfaceMesh");
+                if (waterSurfaceHfmField == null)
+                {
+                    Debug.LogError("WaterSurfacePatcher: Não foi possível encontrar o campo 'hfm' em WaterSurface. O patch de culling será desativado.");
+                    return false;
+                }
+                return true;
+            }
+
+            static void Prefix(HeightFieldMesh __instance, out bool __state)
+            {
+                __state = __instance.frustumCull;
+                WaterSurface waterSurface = WaterSurface.Get();
+                if (waterSurface == null) return;
+                if (__instance == (HeightFieldMesh)waterSurfaceHfmField.GetValue(waterSurface))
+                {
+                    __state = __instance.frustumCull;
+                    __instance.frustumCull = false;
+                }
+            }
+
+            static void Postfix(HeightFieldMesh __instance, bool __state)
+            {
+                 __instance.frustumCull = __state;
             }
         }
 
         public static void Clear()
         {
-            foreach (var patch in patchs)
-            {
-                patch.Clear();
-            }
+            LastFrameMesh = null;
+            LastFrameMatrices = null;
             patchMeshField = null;
             matricesQueueField = null;
             jobHandleField = null;
+            isInitialized = false;
             GBufferCapturePlugin.instance.ClearCB();
-            patchs.Clear();
         }
 
     }

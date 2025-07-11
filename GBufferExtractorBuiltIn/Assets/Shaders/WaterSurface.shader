@@ -37,10 +37,9 @@ Shader "Hidden/WaterGBufferWriter"
             struct v2f_gbuffer
             {
                 float4 pos : SV_POSITION;
-                float2 uv_norm : TEXCOORD0; // UV para a textura de normais
+                float2 uv_norm : TEXCOORD0;
             };
 
-            // ===== LÓGICA DO VERTEX SHADER TRADUZIDA DO JOGO =====
             v2f_gbuffer vert_gbuffer(appdata_base v)
             {
                 v2f_gbuffer o;
