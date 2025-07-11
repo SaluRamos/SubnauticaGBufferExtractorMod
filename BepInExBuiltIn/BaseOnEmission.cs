@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using UWE;
 
 namespace GBufferCapture
 {
@@ -14,6 +15,7 @@ namespace GBufferCapture
     {
 
         public static BaseOnEmission main;
+        private bool lightStatus;
         private Light playerLight;
 
         void OnDestroy()
@@ -45,7 +47,26 @@ namespace GBufferCapture
             playerLight.spotAngle = 179f;
             OnSubChanged(null);
             Player.main.currentSubChangedEvent.AddHandler(this, OnSubChanged);
+            SubscribeToPowerRelay();
             UpdateAllSubRootLights();
+        }
+
+        ////plan B
+        //void LateUpdate()
+        //{
+        //    bool isInside = Player.main.IsInside();
+        //    bool isPowered = Player.main.CanBreathe();
+        //    UpdateLights(isInside && isPowered);
+        //}
+
+        private void SubscribeToPowerRelay()
+        {
+            PowerRelay[] allPowerRelays = UnityEngine.Object.FindObjectsOfType<PowerRelay>();
+            foreach (var powerRelay in allPowerRelays)
+            {
+                powerRelay.powerDownEvent.AddHandler(powerRelay, OnPowerRelayChanged);
+                powerRelay.powerUpEvent.AddHandler(powerRelay, OnPowerRelayChanged);
+            }
         }
 
         private void RestoreAllSubRootLights()
@@ -93,14 +114,57 @@ namespace GBufferCapture
         {
             Debug.LogWarning("SubChanged");
             bool isInside = (Player.main.currentSub != null || Player.main.escapePod.value);
-            UpdateLights(isInside);
+            bool hasEnergy = false;
+            if (isInside)
+            {
+                hasEnergy = (bool) AccessTools.Field(typeof(PowerRelay), "isPowered").GetValue(Player.main.currentSub.powerRelay);
+            }
+            UpdateLights(isInside && hasEnergy);
         }
 
-        public void UpdateLights(bool isInside)
+        //works for everyone
+        public void OnPowerRelayChanged(PowerRelay powerRelay)
         {
-            playerLight.enabled = isInside;
-            Debug.LogWarning($"playerLight is {isInside}");
+            Debug.LogWarning("PowerRelay Trigger");
+            bool isPowered = (bool)AccessTools.Field(typeof(PowerRelay), "isPowered").GetValue(powerRelay);
+            bool isInside = false;
+            //player must be inside subroot or escapePod
+            if (powerRelay.gameObject.GetComponent<EscapePod>() != null) //inside escapePod
+            {
+                isInside = Player.main.escapePod.value;
+                Debug.LogWarning("inside escapePod");
+            }
+            else if (powerRelay.GetType() == typeof(BasePowerRelay)) //inside base
+            {
+                isInside = ((BasePowerRelay)powerRelay).subRoot.playerInside;
+                Debug.LogWarning("inside base");
+            }
+            else //inside submarine
+            {
+                SubRoot subRoot = powerRelay.gameObject.GetComponent<SubRoot>();
+                if (subRoot != null)
+                {
+                    isInside = subRoot.playerInside;
+                    Debug.LogWarning("inside submarine");
+                }
+            }
+            Debug.LogWarning($"PowerRelay, isPowered {isPowered}, isInside {isInside}");
             if (isInside)
+            {
+                BaseOnEmission.main?.UpdateLights(isPowered);
+            }
+        }
+
+        public void UpdateLights(bool newLightStatus)
+        {
+            if (newLightStatus == lightStatus)
+            {
+                return;
+            }
+            lightStatus = newLightStatus;
+            playerLight.enabled = newLightStatus;
+            Debug.LogWarning($"playerLight is {newLightStatus}");
+            if (newLightStatus)
             {
                 SubRoot newSub = Player.main.currentSub;
                 if (newSub != null)
@@ -180,10 +244,10 @@ namespace GBufferCapture
         [HarmonyPostfix]
         public static void OnEnterEscapePod(GameObject gameObject, Player player, bool isForEscapePod, bool setCurrentSubForced)
         {
-            Debug.LogWarning("EscapePodChanged");
             if (isForEscapePod && BaseOnEmission.main != null)
             {
-                BaseOnEmission.main.UpdateLights(true);
+                bool isPowered = (bool)AccessTools.Field(typeof(PowerRelay), "isPowered").GetValue(EscapePod.main.gameObject.GetComponent<PowerRelay>());
+                BaseOnEmission.main.UpdateLights(isPowered);
             }
         }
 
@@ -191,7 +255,6 @@ namespace GBufferCapture
         [HarmonyPostfix]
         public static void OnExitEscapePod(Transform transform, Player player, bool isForEscapePod, bool isForWaterPark)
         {
-            Debug.LogWarning("EscapePodChanged");
             if (isForEscapePod && BaseOnEmission.main != null)
             {
                 BaseOnEmission.main.UpdateLights(false);
