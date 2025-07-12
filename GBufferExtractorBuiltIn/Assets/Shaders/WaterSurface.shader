@@ -1,4 +1,4 @@
-Shader "Hidden/WaterGBufferWriter"
+Shader "Hidden/WaterSurfaceOnGBuffer"
 {
     Properties
     {
@@ -23,6 +23,11 @@ Shader "Hidden/WaterGBufferWriter"
             #pragma fragment frag_gbuffer
             #include "UnityCG.cginc"
 
+            #define MAX_CLIPS 64
+            int _ClipBoxCount;
+            float4x4 _ClipBoxWorldToLocal[MAX_CLIPS];
+            float4 _ClipBoxExtents[MAX_CLIPS];
+
             struct gbuffer_out {
                 float4 rt0 : SV_TARGET0;
                 float4 rt1 : SV_TARGET1;
@@ -38,6 +43,7 @@ Shader "Hidden/WaterGBufferWriter"
             {
                 float4 pos : SV_POSITION;
                 float2 uv_norm : TEXCOORD0;
+                float3 worldPos : TEXCOORD1; 
             };
 
             v2f_gbuffer vert_gbuffer(appdata_base v)
@@ -45,21 +51,27 @@ Shader "Hidden/WaterGBufferWriter"
                 v2f_gbuffer o;
                 float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
                 o.uv_norm = (worldPos.xz * 100.0) / _WaterPatchLength;
-
                 float dist_sq = dot(worldPos.xz - _WorldSpaceCameraPos.xz, worldPos.xz - _WorldSpaceCameraPos.xz);
                 float fade = saturate((200.0 - sqrt(dist_sq)) * 0.0052083);
-
                 float3 displacement = tex2Dlod(_WaterDisplacementMap, float4(o.uv_norm, 0, 0)).xyz;
                 displacement *= 0.01;
-
                 float3 finalWorldPos = (displacement * fade) + worldPos;
                 o.pos = mul(UNITY_MATRIX_VP, float4(finalWorldPos, 1.0));
-
+                o.worldPos = finalWorldPos; 
                 return o;
             }
 
             gbuffer_out frag_gbuffer(v2f_gbuffer i)
             {
+                for (int j = 0; j < _ClipBoxCount; j++)
+                {
+                    float3 localPos = mul(_ClipBoxWorldToLocal[j], float4(i.worldPos, 1.0)).xyz;
+                    if (all(abs(localPos) < float3(_ClipBoxExtents[j].xyz)))
+                    {
+                        clip(-1);
+                    }
+                }
+
                 gbuffer_out o;
                 o.rt0 = float4(0.05, 0.1, 0.15, 1.0); // Albedo
                 o.rt1 = float4(0.8, 0.8, 0.8, 0.9); // Specular/Smoothness

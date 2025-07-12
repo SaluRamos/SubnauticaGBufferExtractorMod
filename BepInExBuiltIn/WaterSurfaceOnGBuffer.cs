@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Unity.Collections;
 using Unity.Jobs;
@@ -7,6 +8,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
+using static UnityEngine.GUI;
 
 namespace GBufferCapture
 {
@@ -37,7 +39,7 @@ namespace GBufferCapture
         {
             if (cam != null && cb != null)
             {
-                cam.RemoveCommandBuffer(CameraEvent.BeforeGBuffer, cb);
+                cam.RemoveCommandBuffer(CameraEvent.AfterGBuffer, cb);
             }
             if (cb != null)
             {
@@ -54,6 +56,10 @@ namespace GBufferCapture
             UpdateGBuffer();
         }
 
+        private const int MAX_CLIPS = 64;
+        private Matrix4x4[] _worldToLocalMatrices = new Matrix4x4[MAX_CLIPS];
+        private Vector4[] _clipExtents = new Vector4[MAX_CLIPS];
+
         private void UpdateGBuffer()
         {
             cb.Clear();
@@ -63,6 +69,30 @@ namespace GBufferCapture
             {
                 return;
             }
+
+            WaterClipProxy[] clips = UnityEngine.Object.FindObjectsOfType<WaterClipProxy>();
+            float maxDistance = 50f;
+            WaterClipProxy[] filteredClips = clips.Where(clip => Vector3.Distance(clip.transform.position, cam.transform.position) <= maxDistance).ToArray();
+
+            int numClips = Mathf.Min(filteredClips.Length, MAX_CLIPS);
+            for (int i = 0; i < numClips; i++)
+            {
+                Transform t = filteredClips[i].transform;
+                Vector3 rawScale = (Vector3) AccessTools.Field(typeof(WaterClipProxy), "distanceFieldMax").GetValue(filteredClips[i]);
+                Vector3 clipScale = new Vector3(Mathf.Abs(rawScale.x)/2, Mathf.Abs(rawScale.y)/2, Mathf.Abs(rawScale.z)/2);
+                Debug.Log($"clipScale {clipScale}");
+                Matrix4x4 objectToWorldMatrix = Matrix4x4.TRS(t.position, t.rotation, t.localScale);
+                _worldToLocalMatrices[i] = t.worldToLocalMatrix;
+                _clipExtents[i] = new Vector4(clipScale.x, clipScale.y, clipScale.z, 0);
+            }
+
+            waterSurfaceMat.SetInt("_ClipBoxCount", numClips);
+            if (numClips > 0)
+            {
+                waterSurfaceMat.SetMatrixArray("_ClipBoxWorldToLocal", _worldToLocalMatrices);
+                waterSurfaceMat.SetVectorArray("_ClipBoxExtents", _clipExtents);
+            }
+
             WaterSurface waterSurface = WaterSurface.Get();
             var normalsTex = (RenderTexture)AccessTools.Field(typeof(WaterSurface), "normalsTexture").GetValue(waterSurface);
             waterSurfaceMat.SetTexture("_WaterDisplacementMap", waterSurface.GetDisplacementTexture());
