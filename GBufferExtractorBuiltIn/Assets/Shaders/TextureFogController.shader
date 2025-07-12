@@ -1,5 +1,3 @@
-// Upgrade NOTE: commented out 'float3 _WorldSpaceCameraPos', a built-in variable
-
 Shader "Hidden/DepthPost"
 {
     Properties 

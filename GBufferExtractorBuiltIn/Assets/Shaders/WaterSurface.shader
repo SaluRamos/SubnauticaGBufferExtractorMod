@@ -23,10 +23,8 @@ Shader "Hidden/WaterSurfaceOnGBuffer"
             #pragma fragment frag_gbuffer
             #include "UnityCG.cginc"
 
-            #define MAX_CLIPS 64
-            int _ClipBoxCount;
-            float4x4 _ClipBoxWorldToLocal[MAX_CLIPS];
-            float4 _ClipBoxExtents[MAX_CLIPS];
+            sampler2D _ClipTexture;
+            float4x4 _WorldToClipMatrix;
 
             struct gbuffer_out {
                 float4 rt0 : SV_TARGET0;
@@ -63,19 +61,16 @@ Shader "Hidden/WaterSurfaceOnGBuffer"
 
             gbuffer_out frag_gbuffer(v2f_gbuffer i)
             {
-                for (int j = 0; j < _ClipBoxCount; j++)
-                {
-                    float3 localPos = mul(_ClipBoxWorldToLocal[j], float4(i.worldPos, 1.0)).xyz;
-                    if (all(abs(localPos) < float3(_ClipBoxExtents[j].xyz)))
-                    {
-                        clip(-1);
-                    }
-                }
-
+                float4 clipCoords_proj = mul(_WorldToClipMatrix, float4(i.worldPos, 1.0));
+                float2 clipUV = clipCoords_proj.xy / clipCoords_proj.w;
+                float4 clipData = tex2D(_ClipTexture, clipUV);
+                float finalClipValue = clipData.g * 1000.0 + (clipData.r + 10.0);
+                clip(finalClipValue);
                 gbuffer_out o;
                 o.rt0 = float4(0.05, 0.1, 0.15, 1.0); // Albedo
                 o.rt1 = float4(0.8, 0.8, 0.8, 0.9); // Specular/Smoothness
-                o.rt2 = float4(tex2D(_NormalsTex, i.uv_norm).xyz, 1.0);
+                // o.rt2 = float4(tex2D(_NormalsTex, i.uv_norm).xyz, 1.0);
+                o.rt2 = float4(UnpackNormal(tex2D(_NormalsTex, i.uv_norm)), 1.0);
                 o.rt3 = float4(0, 0, 0, 0); // Emission
                 return o;
             }

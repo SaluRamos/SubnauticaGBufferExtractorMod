@@ -33,6 +33,11 @@ namespace GBufferCapture
             cam.AddCommandBuffer(CameraEvent.BeforeGBuffer, cb);
 
             WaterSurfacePatcher.Initialize();
+
+            clipRenderTextureContainerType = typeof(WaterSurface).GetNestedType("ClipRenderTextureContainer", BindingFlags.NonPublic | BindingFlags.Static);
+            clipTextureField = AccessTools.Field(clipRenderTextureContainerType, "clipTexture");
+            worldToClipMatrixField = AccessTools.Field(typeof(WaterSurface), "worldToClipMatrix");
+            normalsTextureField = AccessTools.Field(typeof(WaterSurface), "normalsTexture");
         }
 
         void OnDestroy()
@@ -56,45 +61,31 @@ namespace GBufferCapture
             UpdateGBuffer();
         }
 
-        private const int MAX_CLIPS = 64;
-        private Matrix4x4[] _worldToLocalMatrices = new Matrix4x4[MAX_CLIPS];
-        private Vector4[] _clipExtents = new Vector4[MAX_CLIPS];
+        private static System.Type clipRenderTextureContainerType;
+        private static FieldInfo clipTextureField;
+        private static FieldInfo worldToClipMatrixField;
+        private static FieldInfo normalsTextureField;
 
         private void UpdateGBuffer()
         {
             cb.Clear();
             Mesh waterMesh = WaterSurfacePatcher.LastFrameMesh;
             Matrix4x4[] waterMatrices = WaterSurfacePatcher.LastFrameMatrices;
-            if (waterMesh == null || waterMatrices == null || waterMatrices.Length == 0)
+            WaterSurface waterSurface = WaterSurface.Get();
+            if (waterMesh == null || waterMatrices == null || waterMatrices.Length == 0 || waterSurface == null)
             {
                 return;
             }
-
-            WaterClipProxy[] clips = UnityEngine.Object.FindObjectsOfType<WaterClipProxy>();
-            float maxDistance = 50f;
-            WaterClipProxy[] filteredClips = clips.Where(clip => Vector3.Distance(clip.transform.position, cam.transform.position) <= maxDistance).ToArray();
-
-            int numClips = Mathf.Min(filteredClips.Length, MAX_CLIPS);
-            for (int i = 0; i < numClips; i++)
+            if (clipTextureField == null || worldToClipMatrixField == null || normalsTextureField == null)
             {
-                Transform t = filteredClips[i].transform;
-                Vector3 rawScale = (Vector3) AccessTools.Field(typeof(WaterClipProxy), "distanceFieldMax").GetValue(filteredClips[i]);
-                Vector3 clipScale = new Vector3(Mathf.Abs(rawScale.x)/2, Mathf.Abs(rawScale.y)/2, Mathf.Abs(rawScale.z)/2);
-                Debug.Log($"clipScale {clipScale}");
-                Matrix4x4 objectToWorldMatrix = Matrix4x4.TRS(t.position, t.rotation, t.localScale);
-                _worldToLocalMatrices[i] = t.worldToLocalMatrix;
-                _clipExtents[i] = new Vector4(clipScale.x, clipScale.y, clipScale.z, 0);
+                Debug.Log("some field is null");
+                return;
             }
-
-            waterSurfaceMat.SetInt("_ClipBoxCount", numClips);
-            if (numClips > 0)
-            {
-                waterSurfaceMat.SetMatrixArray("_ClipBoxWorldToLocal", _worldToLocalMatrices);
-                waterSurfaceMat.SetVectorArray("_ClipBoxExtents", _clipExtents);
-            }
-
-            WaterSurface waterSurface = WaterSurface.Get();
-            var normalsTex = (RenderTexture)AccessTools.Field(typeof(WaterSurface), "normalsTexture").GetValue(waterSurface);
+            Matrix4x4 worldToClipMatrix = (Matrix4x4)worldToClipMatrixField.GetValue(waterSurface);
+            RenderTexture clipTexture = (RenderTexture)clipTextureField.GetValue(null);
+            waterSurfaceMat.SetMatrix("_WorldToClipMatrix", worldToClipMatrix);
+            waterSurfaceMat.SetTexture("_ClipTexture", clipTexture);
+            RenderTexture normalsTex = (RenderTexture) normalsTextureField.GetValue(waterSurface);
             waterSurfaceMat.SetTexture("_WaterDisplacementMap", waterSurface.GetDisplacementTexture());
             waterSurfaceMat.SetTexture("_NormalsTex", normalsTex);
             waterSurfaceMat.SetFloat("_WaterPatchLength", waterSurface.GetPatchLength());
