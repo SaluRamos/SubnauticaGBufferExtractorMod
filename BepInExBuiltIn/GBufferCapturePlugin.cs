@@ -92,14 +92,14 @@ namespace GBufferCapture
             savingFormatEntry = Config.Bind("Capture", "SavingFormat", SavingFormat.JPG, "Define saving format extension");
             jpgQualityEntry = Config.Bind("Capture", "JPG Quality", 95, "jpg quality");
 
-            saveDepthEntry = Config.Bind("Capture", "saveDepthMap", true, "toggle saving depth map");
-            saveWorldNormalEntry = Config.Bind("Capture", "saveWorldNormalMap", true, "toggle saving world normal map");
-            saveLocalNormalEntry = Config.Bind("Capture", "saveLocalNormalMap", false, "toggle saving local normal map");
-            saveAlbedoEntry = Config.Bind("Capture", "saveAlbedoMap", true, "toggle saving albedo map");
-            saveFinalRenderEntry = Config.Bind("Capture", "saveFinalRender", true, "toggle saving final render");
-            saveSpecularEntry = Config.Bind("Capture", "saveSpecularMap", true, "toggle saving specular map");
-            saveAOEntry = Config.Bind("Capture", "saveAmbientOcclusionMap", true, "toggle saving ambient occlusion map");
-            saveNoLightEntry = Config.Bind("Capture", "saveNoLightMap", true, "toggle saving before lighting");
+            saveDepthEntry = Config.Bind("Capture", "saveDepthMap", true, "toggle saving depth map, only updates when restarting mod core");
+            saveWorldNormalEntry = Config.Bind("Capture", "saveWorldNormalMap", true, "toggle saving world normal map, only updates when restarting mod core");
+            saveLocalNormalEntry = Config.Bind("Capture", "saveLocalNormalMap", false, "toggle saving local normal map, only updates when restarting mod core");
+            saveAlbedoEntry = Config.Bind("Capture", "saveAlbedoMap", true, "toggle saving albedo map, only updates when restarting mod core");
+            saveFinalRenderEntry = Config.Bind("Capture", "saveFinalRender", true, "toggle saving final render, only updates when restarting mod core");
+            saveSpecularEntry = Config.Bind("Capture", "saveSpecularMap", true, "toggle saving specular map, only updates when restarting mod core");
+            saveAOEntry = Config.Bind("Capture", "saveAmbientOcclusionMap", true, "toggle saving ambient occlusion map, only updates when restarting mod core");
+            saveNoLightEntry = Config.Bind("Capture", "saveNoLightMap", true, "toggle saving before lighting, only updates when restarting mod core");
 
             removeScubaMaskEntry = Config.Bind("Screen Cleaner", "removeScubaMask", true, "toggle remove scuba mask");
             removeBreathBubblesEntry = Config.Bind("Screen Cleaner", "removeBreathBubbles", true, "toggle breath bubbles");
@@ -306,7 +306,7 @@ namespace GBufferCapture
             aoCB.SetGlobalTexture(Shader.PropertyToID("_MainTex"), occlusionTexture);
             aoCB.Blit(occlusionTexture, aoRT, aoMaterial2, 8);
             aoCB.ReleaseTemporaryRT(occlusionTexture);
-            mainCam.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, aoCB); //needs to be at mainCam!
+            gbufferCam.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, aoCB, tcdMaterial); //needs to be at mainCam!
         }
 
         private void SetupCB()
@@ -317,22 +317,46 @@ namespace GBufferCapture
             gbufferCam.depthTextureMode = DepthTextureMode.Depth;
             mainCam.depthTextureMode = DepthTextureMode.Depth;
 
-            SetupLocalNormalMap();
-            SetupAmbientOcclusion();
+            if (saveLocalNormalEntry.Value)
+            {
+                SetupLocalNormalMap();
+            }
+            if (saveAOEntry.Value)
+            { 
+                SetupAmbientOcclusion();
+            }
 
             cb = new CommandBuffer();
-            cb.Blit(BuiltinRenderTextureType.CameraTarget, depthRT, mcdMaterial);
-            cb.Blit(BuiltinRenderTextureType.GBuffer2, worldNormalRT, tcdMaterial);
-            cb.Blit(BuiltinRenderTextureType.GBuffer0, albedoRT, tcdMaterial);
-            cb.Blit(BuiltinRenderTextureType.GBuffer1, specularRT, tcdMaterial);
+            if (saveDepthEntry.Value)
+            { 
+                cb.Blit(BuiltinRenderTextureType.CameraTarget, depthRT, mcdMaterial);
+            }
+            if (saveWorldNormalEntry.Value)
+            { 
+                cb.Blit(BuiltinRenderTextureType.GBuffer2, worldNormalRT, tcdMaterial);
+            }
+            if (saveAlbedoEntry.Value)
+            { 
+                cb.Blit(BuiltinRenderTextureType.GBuffer0, albedoRT, tcdMaterial);
+            }
+            if (saveSpecularEntry.Value)
+            { 
+                cb.Blit(BuiltinRenderTextureType.GBuffer1, specularRT, tcdMaterial);
+            }
             gbufferCam.AddCommandBuffer(CameraEvent.AfterEverything, cb);
 
             blightCB = new CommandBuffer();
-            blightCB.Blit(BuiltinRenderTextureType.CameraTarget, beforeLightRT, tcdMaterial);
+            if (saveNoLightEntry.Value)
+            { 
+                blightCB.Blit(BuiltinRenderTextureType.CameraTarget, beforeLightRT, tcdMaterial);
+            }
             gbufferCam.AddCommandBuffer(CameraEvent.BeforeLighting, blightCB);
 
             mainCB = new CommandBuffer();
-            mainCB.Blit(BuiltinRenderTextureType.CameraTarget, mainRT);
+            if (saveFinalRenderEntry.Value)
+            { 
+                mainCB.Blit(BuiltinRenderTextureType.CameraTarget, mainRT);
+            }
             mainCam.AddCommandBuffer(CameraEvent.AfterEverything, mainCB);
 
 
