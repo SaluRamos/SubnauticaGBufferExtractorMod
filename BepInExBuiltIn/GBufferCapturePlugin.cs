@@ -36,6 +36,18 @@ namespace GBufferCapture
         ALBEDO
     }
 
+    public enum FocusMode
+    { 
+        FINAL_RENDER,
+        DEPTH_MAP,
+        LOCAL_NORMAL_MAP,
+        WORLD_NORMAL_MAP,
+        ALBEDO_MAP,
+        SPECULAR_MAP,
+        AO_MAP,
+        EMISSION_MAP
+    }
+
     [BepInPlugin(MyGUID, PluginName, VersionString)]
     public class GBufferCapturePlugin : BaseUnityPlugin
     {
@@ -55,6 +67,7 @@ namespace GBufferCapture
 
         public static ConfigEntry<bool> gbuffersPreviewEnabledEntry;
         public static ConfigEntry<int> gbuffersPreviewSizeEntry;
+        public static ConfigEntry<FocusMode> focusModeEntry;
 
         public static ConfigEntry<float> captureIntervalEntry;
         public static ConfigEntry<int> captureWidthEntry;
@@ -85,6 +98,7 @@ namespace GBufferCapture
 
             gbuffersPreviewEnabledEntry = Config.Bind("Gui", "gbuffersPreviewEnabled", true, "toggle gbuffers captures GUI");
             gbuffersPreviewSizeEntry = Config.Bind("Gui", "gbuffersPreviewSize", 256, new ConfigDescription("width of gbuffers preview", new AcceptableValueRange<int>(100, 768)));
+            focusModeEntry = Config.Bind("Gui", "focusMode", FocusMode.FINAL_RENDER, "changes camera render");
 
             captureIntervalEntry = Config.Bind("Capture", "CaptureInterval", 1.0f, "Set time between captures in seconds");
             captureWidthEntry = Config.Bind("Capture", "CaptureWidth", 960, "Resize capture width");
@@ -408,6 +422,32 @@ namespace GBufferCapture
 
         void OnGUI()
         {
+            switch (focusModeEntry.Value)
+            { 
+                case FocusMode.DEPTH_MAP:
+                    GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), depthRT, ScaleMode.StretchToFill, false);
+                    break;
+                case FocusMode.LOCAL_NORMAL_MAP:
+                    GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), localNormalRT, ScaleMode.StretchToFill, false);
+                    break;
+                case FocusMode.WORLD_NORMAL_MAP:
+                    GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), worldNormalRT, ScaleMode.StretchToFill, false);
+                    break;
+                case FocusMode.ALBEDO_MAP:
+                    GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), albedoRT, ScaleMode.StretchToFill, false);
+                    break;
+                case FocusMode.SPECULAR_MAP:
+                    GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), specularRT, ScaleMode.StretchToFill, false);
+                    break;
+                case FocusMode.AO_MAP:
+                    GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), aoRT, ScaleMode.StretchToFill, false);
+                    break;
+                case FocusMode.EMISSION_MAP:
+                    GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), beforeLightRT, ScaleMode.StretchToFill, false);
+                    break;
+                default:
+                    break;
+            }
             if (cb != null && gbuffersPreviewEnabledEntry.Value && gbuffersPreviewSizeEntry.Value > 0)
             {
                 int stackPos = 0;
