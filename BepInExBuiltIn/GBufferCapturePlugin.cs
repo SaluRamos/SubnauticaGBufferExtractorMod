@@ -51,6 +51,7 @@ namespace GBufferCapture
         public static ManualLogSource Log = new ManualLogSource(PluginName);
 
         public static ConfigEntry<float> gbuffersMaxRenderDistanceEntry;
+        public static ConfigEntry<float> gbufferUnderwaterDistanceClipEntry;
 
         public static ConfigEntry<bool> gbuffersPreviewEnabledEntry;
         public static ConfigEntry<int> gbuffersPreviewSizeEntry;
@@ -79,7 +80,8 @@ namespace GBufferCapture
         {
             instance = this;
             Directory.CreateDirectory(captureFolder);
-            gbuffersMaxRenderDistanceEntry = Config.Bind("Rendering", "GBufferMaxRenderDistanceUnderwater", 200.0f, "Max saw distance by gbuffers underwater, upperwater default is 1000.0f");
+            gbuffersMaxRenderDistanceEntry = Config.Bind("Rendering", "gbuffersMaxRenderDistance", 200.0f, "Max depth distance in gbuffer");
+            gbufferUnderwaterDistanceClipEntry = Config.Bind("Rendering", "gbufferUnderwaterDistanceClip", 0.2f, new ConfigDescription("max distance underwater", new AcceptableValueRange<float>(0f, 1f)));
 
             gbuffersPreviewEnabledEntry = Config.Bind("Gui", "gbuffersPreviewEnabled", true, "toggle gbuffers captures GUI");
             gbuffersPreviewSizeEntry = Config.Bind("Gui", "gbuffersPreviewSize", 256, new ConfigDescription("width of gbuffers preview", new AcceptableValueRange<int>(100, 768)));
@@ -432,14 +434,16 @@ namespace GBufferCapture
         {
             if (cb != null && waterGBufferInjector != null)
             {
-                if (waterGBufferInjector.IsCameraAboveWater())
-                {
-                    cb.SetGlobalFloat("_DepthCutoff", 2000.0f);
-                }
-                else
-                {
-                    cb.SetGlobalFloat("_DepthCutoff", gbuffersMaxRenderDistanceEntry.Value);
-                }
+                UnityEngine.Matrix4x4 worldToCameraMatrix = gbufferCam.worldToCameraMatrix;
+                GameObject waterPlane = FindObjectOfType<WaterscapeVolume>().waterPlane;
+                Transform transform = waterPlane.transform;
+                UnityEngine.Plane plane = new UnityEngine.Plane(transform.up, transform.position);
+                UnityEngine.Plane plane2 = worldToCameraMatrix.TransformPlane(plane);
+                UnityEngine.Vector3 normal = plane2.normal;
+                Shader.SetGlobalVector(ShaderPropertyID._UweVsWaterPlane, new UnityEngine.Vector4(normal.x, normal.y, normal.z, plane2.distance));
+
+                cb.SetGlobalFloat("_DepthMaxDistance", gbuffersMaxRenderDistanceEntry.Value);
+                cb.SetGlobalFloat("_DepthCutoffBelowWater", gbufferUnderwaterDistanceClipEntry.Value);
             }
         }
 
