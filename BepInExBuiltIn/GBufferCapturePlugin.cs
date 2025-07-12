@@ -80,8 +80,8 @@ namespace GBufferCapture
         {
             instance = this;
             Directory.CreateDirectory(captureFolder);
-            gbuffersMaxRenderDistanceEntry = Config.Bind("Rendering", "gbuffersMaxRenderDistance", 200.0f, "Max depth distance in gbuffer");
-            gbufferUnderwaterDistanceClipEntry = Config.Bind("Rendering", "gbufferUnderwaterDistanceClip", 0.2f, new ConfigDescription("max distance underwater", new AcceptableValueRange<float>(0f, 1f)));
+            gbuffersMaxRenderDistanceEntry = Config.Bind("Rendering", "gbuffersMaxRenderDistance", 1000.0f, "Max depth distance in gbuffer");
+            gbufferUnderwaterDistanceClipEntry = Config.Bind("Rendering", "gbufferUnderwaterDistanceClip", 0.12f, new ConfigDescription("max distance underwater", new AcceptableValueRange<float>(0f, 1f)));
 
             gbuffersPreviewEnabledEntry = Config.Bind("Gui", "gbuffersPreviewEnabled", true, "toggle gbuffers captures GUI");
             gbuffersPreviewSizeEntry = Config.Bind("Gui", "gbuffersPreviewSize", 256, new ConfigDescription("width of gbuffers preview", new AcceptableValueRange<int>(100, 768)));
@@ -222,7 +222,7 @@ namespace GBufferCapture
             localNormalCB.Blit(localNormalRT, localNormalTempRT, tcdMaterial);
             localNormalCB.Blit(localNormalTempRT, localNormalRT);
             localNormalCB.ReleaseTemporaryRT(localNormalTempRT);
-            gbufferCam.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, localNormalCB); //needs to be at mainCam!
+            gbufferCam.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, localNormalCB);
         }
 
         private void SetupAmbientOcclusion()
@@ -306,11 +306,17 @@ namespace GBufferCapture
             aoCB.SetGlobalTexture(Shader.PropertyToID("_MainTex"), occlusionTexture);
             aoCB.Blit(occlusionTexture, aoRT, aoMaterial2, 8);
             aoCB.ReleaseTemporaryRT(occlusionTexture);
-            gbufferCam.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, aoCB, tcdMaterial); //needs to be at mainCam!
+            int tempRT = Shader.PropertyToID("_TempRT");
+            aoCB.GetTemporaryRT(tempRT, aoRT.descriptor);
+            aoCB.Blit(aoRT, tempRT, tcdMaterial);
+            aoCB.Blit(tempRT, aoRT);
+            aoCB.ReleaseTemporaryRT(tempRT);
+            gbufferCam.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, aoCB);
         }
 
         private void SetupCB()
         {
+            Debug.LogWarning("mod core starting");
             SetupRTs();
             SetupMaterials();
 
@@ -364,7 +370,7 @@ namespace GBufferCapture
 
         public void ClearCB()
         {
-            Debug.LogWarning("mod core stopped");
+            Debug.LogWarning("mod core stopping");
             if (mainCam != null && mainCB != null)
             {
                 mainCam.RemoveCommandBuffer(CameraEvent.AfterEverything, mainCB);
@@ -443,7 +449,7 @@ namespace GBufferCapture
                     stackPos++;
                 }
             }
-            string labelText = $"Mod Core {(modCoreEnabled ? "Disabled" : "Enabled")}\nCapture {(isCapturing ? "Enabled" : "Disabled")}\nTotal Captures: {totalCaptures}\nCapture Interval: {captureIntervalEntry.Value}s";
+            string labelText = $"Mod Core {(modCoreEnabled ? "Enabled" : "Disabled")}\nCapture {(isCapturing ? "Enabled" : "Disabled")}\nTotal Captures: {totalCaptures}\nCapture Interval: {captureIntervalEntry.Value}s";
             if (labelStyle == null)
             {
                 labelStyle = new GUIStyle(GUI.skin.label);
@@ -469,6 +475,11 @@ namespace GBufferCapture
                 cb.SetGlobalFloat("_DepthMaxDistance", gbuffersMaxRenderDistanceEntry.Value);
                 cb.SetGlobalFloat("_DepthCutoffBelowWater", gbufferUnderwaterDistanceClipEntry.Value);
             }
+            //verificar se o mudou de cena
+            if (mainCam == null || gbufferCam == null)
+            {
+                ClearCB();
+            }
         }
 
         private static int totalCaptures = 0;
@@ -490,7 +501,6 @@ namespace GBufferCapture
                     mainCam = FindObjectOfType<WaterSurfaceOnCamera>()?.gameObject.GetComponent<Camera>();
                     if (mainCam != null)
                     {
-                        Debug.LogWarning("mod core starting");
                         Utils.ToggleParts(!removeScubaMaskEntry.Value, !removeBreathBubblesEntry.Value, !removeWaterParticlesEntry.Value);
                         gbufferCam = CreateNewCam("gBufferCam", mainCam);
                         waterGBufferInjector = gbufferCam.gameObject.AddComponent<WaterGBufferInjector>();
