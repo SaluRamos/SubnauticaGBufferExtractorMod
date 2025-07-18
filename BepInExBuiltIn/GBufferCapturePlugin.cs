@@ -16,10 +16,6 @@ using UnityEngine;
 using UnityEngine.PostProcessing;
 using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
-using static HandReticle;
-using static ICSharpCode.SharpZipLib.Zip.ExtendedUnixData;
-using static RadicalLibrary.Spline;
-using static uGUI_Logo;
 
 namespace GBufferCapture 
 {
@@ -108,7 +104,7 @@ namespace GBufferCapture
 
             saveDepthEntry = Config.Bind("Capture", "saveDepthMap", true, "toggle saving depth map, only updates when restarting mod core");
             saveWorldNormalEntry = Config.Bind("Capture", "saveWorldNormalMap", true, "toggle saving world normal map, only updates when restarting mod core");
-            saveLocalNormalEntry = Config.Bind("Capture", "saveLocalNormalMap", false, "toggle saving local normal map, only updates when restarting mod core");
+            saveLocalNormalEntry = Config.Bind("Capture", "saveLocalNormalMap", true, "toggle saving local normal map, only updates when restarting mod core");
             saveAlbedoEntry = Config.Bind("Capture", "saveAlbedoMap", true, "toggle saving albedo map, only updates when restarting mod core");
             saveFinalRenderEntry = Config.Bind("Capture", "saveFinalRender", true, "toggle saving final render, only updates when restarting mod core");
             saveSpecularEntry = Config.Bind("Capture", "saveSpecularMap", true, "toggle saving specular map, only updates when restarting mod core");
@@ -515,10 +511,17 @@ namespace GBufferCapture
                 cb.SetGlobalFloat("_DepthMaxDistance", gbuffersMaxRenderDistanceEntry.Value);
                 cb.SetGlobalFloat("_DepthCutoffBelowWater", gbufferUnderwaterDistanceClipEntry.Value);
             }
-            //verificar se o mudou de cena
-            if (mainCam == null || gbufferCam == null)
+            if ((mainCam == null || gbufferCam == null) && modCoreEnabled)
             {
                 ClearCB();
+            }
+            if (neverShowDebugGUIEntry.Value)
+            {
+                TerrainDebugGUI[] array = UnityEngine.Object.FindObjectsOfType<TerrainDebugGUI>();
+                foreach (TerrainDebugGUI obj in array)
+                {
+                    obj.enabled = false;
+                }
             }
         }
 
@@ -564,15 +567,6 @@ namespace GBufferCapture
             if (Input.GetKeyDown(KeyCode.F9))
             {
                 SaveCaptures();
-            }
-
-            if (neverShowDebugGUIEntry.Value)
-            {
-                TerrainDebugGUI[] array = UnityEngine.Object.FindObjectsOfType<TerrainDebugGUI>();
-                foreach (TerrainDebugGUI obj in array)
-                {
-                    obj.enabled = false;
-                }
             }
 
             if (isCapturing && cb != null)
