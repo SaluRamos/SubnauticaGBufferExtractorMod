@@ -361,20 +361,19 @@ namespace GBufferCapture
             }
             gbufferCam.AddCommandBuffer(CameraEvent.AfterEverything, cb);
 
-            blightCB = new CommandBuffer();
             if (saveNoLightEntry.Value)
             { 
+                blightCB = new CommandBuffer();
                 blightCB.Blit(BuiltinRenderTextureType.CameraTarget, beforeLightRT, tcdMaterial);
+                mainCam.AddCommandBuffer(CameraEvent.BeforeLighting, blightCB);
             }
-            gbufferCam.AddCommandBuffer(CameraEvent.BeforeLighting, blightCB);
 
-            mainCB = new CommandBuffer();
             if (saveFinalRenderEntry.Value)
             { 
+                mainCB = new CommandBuffer();
                 mainCB.Blit(BuiltinRenderTextureType.CameraTarget, mainRT);
+                mainCam.AddCommandBuffer(CameraEvent.AfterEverything, mainCB);
             }
-            mainCam.AddCommandBuffer(CameraEvent.AfterEverything, mainCB);
-
 
         }
 
