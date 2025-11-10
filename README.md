@@ -33,7 +33,7 @@ RECOMMENDATIONS:
 - In graphics disable "motion blur" and "lens dirt"
   
 ## Requirements
-- https://github.com/BepInEx/BepInEx  
+- https://www.nexusmods.com/subnautica/mods/1108?tab=files&file_id=8140
 - https://github.com/BepInEx/BepInEx.ConfigurationManager (configure in-game mod variables)  
 
 ## Utils
