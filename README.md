@@ -10,7 +10,6 @@ the captured gbuffers are:
 - Specular Map (WORKING)  
 - Ambient Occlusion (WORKING)  
 - Before Lightning (WORKING, USED AS EMISSION MAP APPROXIMATION)  
-- ShaderID/Segmentation per Material (NOT SUPPORTED YET)  
   
 ![alt text](readme_images/image.png)
 ![alt text](readme_images/image-1.png)
@@ -55,7 +54,6 @@ use Unity 2019.4.36f1: https://unity.com/releases/editor/archive
 - https://github.com/yukieiji/UnityExplorer (very useful to inspect gameobjects ingame)  
 - https://github.com/AssetRipper/AssetRipper (very useful to decompile subnautica and read every script/shader of the game, remember to use "decompile" shader option)  
 
-## Known Issues
+## To do
 
-- Ambient occlusion map random artifacts
-- Local Normal map random artifacts
+- ShaderID/Segmentation per Material  
